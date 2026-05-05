@@ -2,7 +2,7 @@
 name: insforge-cli
 description: >-
   Use this skill when managing InsForge infrastructure with the CLI: projects, SQL, migrations, RLS policies, functions, storage buckets, frontend deployments, compute services, secrets/env vars, Stripe payment keys/catalog/products/prices/webhooks, schedules, logs, diagnostics, or import/export. For app code with @insforge/sdk, use the insforge skill instead.
-license: Apache-2.0
+license: MIT
 metadata:
   author: insforge
   version: "1.2.0"
