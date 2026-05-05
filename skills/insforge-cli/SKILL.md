@@ -184,6 +184,8 @@ For frontend hosting see **Frontend Deployments** above.
 
 Test risky schema, RLS, auth, or function changes in an isolated branch project before applying them to prod. A branch shares the parent's `JWT_SECRET` (so the same users authenticate) but gets a fresh EC2 + database + `API_KEY` / `ANON_KEY`. See [`references/branch.md`](references/branch.md) for the decision guide and lifecycle command details.
 
+> ⚠️ **Backend version requirement.** Branching is still in development and only available on InsForge backend **2.1.0 or later**. On older backends, `npx @insforge/cli branch` commands will fail. If you hit an error, contact the InsForge team.
+
 | Command | Description |
 |---------|-------------|
 | `npx @insforge/cli branch create <name> [--mode full\|schema-only] [--no-switch]` | Create a branch from the linked project. Auto-switches the directory's context to the new branch by default. |
