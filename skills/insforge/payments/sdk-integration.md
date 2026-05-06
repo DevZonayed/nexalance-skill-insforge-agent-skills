@@ -133,7 +133,7 @@ Protect those tables with app-specific RLS. Backend fulfillment should populate 
 
 ## Live/Test Environment
 
-During implementation, target `environment: 'test'`. Only switch to `live` after the developer explicitly approves production Stripe changes and live prices are configured.
+During implementation, pass `'test'` as the first argument to the payments SDK methods, for example `insforge.payments.createCheckoutSession('test', body)`. Only switch to `'live'` after the developer explicitly approves production Stripe changes and live prices are configured.
 
 Do not put Stripe secret keys in frontend code. Stripe keys are configured through the dashboard or CLI and stored in InsForge's secret store.
 
