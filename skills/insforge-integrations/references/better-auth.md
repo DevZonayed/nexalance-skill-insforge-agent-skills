@@ -1,13 +1,21 @@
 # InsForge + Better Auth Integration Guide
 
-Better Auth is the only supported auth provider that **runs inside your own Postgres database** — there is no third-party SaaS in the loop. You point Better Auth at InsForge's Postgres via a connection string, it creates `user` / `session` / `account` / `verification` tables in `public`, and a small bridge route on your app server signs an HS256 JWT for the InsForge HTTP API. Better Auth's `id` column is a string (not UUID), the same convention every other third-party integration here uses for `user_id`.
+Better Auth is the only supported auth provider that **runs inside your own Postgres database** — there is no third-party SaaS in the loop. You point Better Auth at InsForge's Postgres via a connection string, it creates `user` / `session` / `account` / `verification` tables in a dedicated `better_auth` schema (hidden from PostgREST by construction — InsForge exposes only `public`), and a small bridge route on your app server signs an HS256 JWT for the InsForge HTTP API. Better Auth's `id` column is a string (not UUID), the same convention every other third-party integration here uses for `user_id`.
+
+Three schemas, three owners — the integration boundary is structural, not procedural:
+
+```
+auth.*          ← InsForge platform internals (project admins, OAuth) — untouched
+better_auth.*   ← Better Auth's tables (this integration)
+public.*        ← your app's data, with cross-schema FK to better_auth.user(id)
+```
 
 This guide covers two framework setups in detail:
 
 - **Next.js (App Router)** — same-origin, fullstack; the easy path
 - **Vite + React** (or any standalone React SPA) — needs a small Node server somewhere to host BA's routes; covered in [its own section](#vite--react-only-setups)
 
-The auth/bridge primitives are framework-agnostic — `lib/auth.ts`, the REVOKE block, RLS policies, plugins, and the `useInsforgeClient` hook are identical across both. Only the route-handler shape and a few env-var prefixes differ.
+The auth/bridge primitives are framework-agnostic — `lib/auth.ts`, the schema setup, RLS policies, plugins, and the `useInsforgeClient` hook are identical across both. Only the route-handler shape and a few env-var prefixes differ.
 
 ## Recommended Workflow
 
@@ -16,7 +24,7 @@ For Next.js apps, the InsForge CLI scaffolds every file in this guide in one com
 ```bash
 npx @insforge/cli link --auth better-auth   # or create --auth better-auth for a fresh dir
 npm install
-npm run setup    # better-auth migrate + 01-init.sql + 02-revoke.sql
+npm run setup    # creates better_auth schema, runs BA migrate, sets up notes + RLS
 npm run dev
 ```
 
@@ -24,7 +32,7 @@ The scaffold is overlay-safe — existing files are preserved, `package.json` is
 
 The rest of this guide is the **reference layer**: what each scaffolded file looks like, why it's shaped that way, how to extend it (plugins, custom claims, magic-link, two-factor), and how to run on non-Next stacks. Read the section that matches what you're customizing — you don't need to read top-to-bottom unless you're integrating manually.
 
-> **Integrating manually** (no CLI, or non-Next stack)? Sequence: (1) `npx @insforge/cli create` or `link`, (2) `npx @insforge/cli secrets get JWT_SECRET`, (3) install deps and fill `.env.local`, (4) write `lib/auth.ts`, (5) `npx @better-auth/cli migrate`, (6) `REVOKE` block, (7) BA route handler, (8) bridge route, (9) `requesting_user_id()` + RLS, (10) `useInsforgeClient` (or server-side `createInsForgeClient`), (11) feature pages. Each numbered step has its own section below.
+> **Integrating manually** (no CLI, or non-Next stack)? Sequence: (1) `npx @insforge/cli create` or `link`, (2) `npx @insforge/cli secrets get JWT_SECRET`, (3) install deps and fill `.env.local`, (4) write `lib/auth.ts` with `search_path` set to `better_auth, public` (so BA's tables go in the dedicated schema), (5) `CREATE SCHEMA better_auth`, (6) `npx @better-auth/cli migrate`, (7) BA route handler, (8) bridge route, (9) `requesting_user_id()` + RLS + `notes` table FK'd to `better_auth.user(id)`, (10) `useInsforgeClient` (or server-side `createInsForgeClient`), (11) feature pages. Each numbered step has its own section below.
 
 Starting point: `npx @insforge/cli link --auth better-auth` (or `create`) scaffolds a working Next 15 + BA project. The `--auth` flag is canonical; the rest of this guide explains the pieces it generates. For Vite/React or other non-Next stacks, see [Vite / React-only setups](#vite--react-only-setups) below — the proxy config and bridge route map directly.
 
@@ -66,10 +74,19 @@ function requireEnv(name: string): string {
   return v;
 }
 
+// BA's tables live in the dedicated `better_auth` schema. PostgREST exposes
+// only `public` by default, so this isolation is what keeps user emails out
+// of the data API — no REVOKE step needed. `pg.Pool` doesn't take a `schema`
+// option, so we set search_path on every new pooled connection. BA's CLI
+// (`better-auth migrate`) imports this file, so search_path applies during
+// migrate too — its `CREATE TABLE`s land in `better_auth.*`, not `public`.
+const pool = new Pool({ connectionString: requireEnv('DATABASE_URL') });
+pool.on('connect', (client) => {
+  client.query('SET search_path TO better_auth, public').catch(() => { /* noop */ });
+});
+
 export const auth = betterAuth({
-  database: new Pool({
-    connectionString: requireEnv('DATABASE_URL'),   // your InsForge Postgres
-  }),
+  database: pool,
   emailAndPassword: { enabled: true },
   secret: requireEnv('BETTER_AUTH_SECRET'),         // Better Auth's own session secret — different from InsForge's JWT_SECRET
   baseURL: requireEnv('BETTER_AUTH_URL'),           // e.g. http://localhost:3000
@@ -85,30 +102,24 @@ export const authClient = createAuthClient({
 });
 ```
 
-### First migrate
+### Schema setup + first migrate
+
+Create the schema once, then run BA's migrate — it'll create its four tables in `better_auth.*` because of the `search_path` set in `lib/auth.ts`:
+
+```sql
+-- Run BEFORE auth:migrate so the schema exists when BA tries CREATE TABLE.
+CREATE SCHEMA IF NOT EXISTS better_auth;
+```
 
 ```bash
 npx @better-auth/cli migrate --config ./lib/auth.ts -y
 ```
 
-Creates four tables in `public`: `user`, `session`, `account`, `verification`. Idempotent — re-run any time you add `additionalFields`.
+Creates `better_auth.user`, `better_auth.session`, `better_auth.account`, `better_auth.verification`. Idempotent — re-run any time you add `additionalFields`.
 
-### Lock down PostgREST exposure (REQUIRED)
+> **Why this is enough.** PostgREST is configured to expose only the `public` schema (`PGRST_DB_SCHEMAS=public`). Anything in `better_auth` is invisible to the data API, so anon and authenticated SDK calls return `404 relation "public.user" does not exist` instead of leaking emails. No REVOKE step. The InsForge dashboard reaches `better_auth.*` through its admin route (postgres superuser pool, role-independent), so Studio inspection works.
 
-**This is the one step the upstream Better Auth Supabase guide forgets.** Without it, anyone with your anon key can read user emails through the InsForge data API.
-
-```sql
-REVOKE ALL ON public."user", public.session, public.account, public.verification
-  FROM anon, authenticated, project_admin;
-
-NOTIFY pgrst, 'reload schema';
-```
-
-The `REVOKE` survives subsequent `auth migrate` runs (Postgres only re-grants on `CREATE TABLE`, not `ALTER TABLE`). Including `project_admin` is safe — InsForge Studio inspects tables through the backend admin pool (which connects as `postgres`), not via the `project_admin` Postgres role, so the dashboard keeps working.
-
-> **`DATABASE_URL` must keep superuser-grade privileges.** Better Auth itself connects via this connection string to write to `user` / `session` / `account` / `verification`. Use `postgres` (or another fully-granted role) — NOT `authenticated`. After the REVOKE, `authenticated` can't INSERT into BA's tables, so a connection string scoped to that role silently breaks sign-up at first use. This is the second-most-common foot-gun after forgetting the REVOKE itself.
-
-> **Enabling plugins later?** Every Better Auth plugin that adds tables (`organization`, `twoFactor`, `apiKey`, `passkey`, …) creates them in `public` with the same default grants. Re-run an analogous `REVOKE` for the plugin's tables. The Organization plugin specifically is covered in the [Better Auth plugins](#better-auth-plugins-optional) section below.
+> **What about future plugins?** BA plugins that add tables (`organization`, `twoFactor`, `apiKey`, `passkey`, …) write to whatever schema BA's pool sees in `search_path` — i.e., `better_auth`. They inherit the same isolation automatically. No per-plugin REVOKE template needed.
 
 ## Better Auth route handlers (Next.js)
 
@@ -295,7 +306,7 @@ client.realtime['tokenManager'].setAccessToken(null);   // private at compile-ti
 
 ## Database setup
 
-Better Auth user IDs are **strings** (e.g. `f5kGYiUXDPEJqRDQ4jgtNTopIzpj5MgK`), not UUIDs. Use `TEXT` for any FK referencing them, and FK to `public.user(id)` — never to `auth.users(id)` (which is InsForge's separate native table).
+Better Auth user IDs are **strings** (e.g. `f5kGYiUXDPEJqRDQ4jgtNTopIzpj5MgK`), not UUIDs. Use `TEXT` for any FK referencing them, and FK to `better_auth.user(id)` — never to `auth.users(id)` (InsForge's separate native auth table, UUID id, irrelevant to BA).
 
 ```sql
 -- 0. ensure gen_random_uuid() is available (idempotent)
@@ -315,7 +326,7 @@ $$;
 CREATE TABLE IF NOT EXISTS public.notes (
   id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
   user_id text NOT NULL DEFAULT public.requesting_user_id()
-    REFERENCES public."user"(id) ON DELETE CASCADE,
+    REFERENCES better_auth."user"(id) ON DELETE CASCADE,
   body text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -446,7 +457,7 @@ The bridge route (`/api/insforge-token`) is for end-user requests — it reads B
 
 ## Better Auth plugins (optional)
 
-Better Auth ships ~37 plugins. Most are drop-in (`twoFactor`, `magicLink`, `username`) and require no InsForge-side changes. Plugins that **add tables** require an additional `REVOKE` so the new rows aren't readable through PostgREST's `anon` role.
+Better Auth ships ~37 plugins. Most are drop-in (`twoFactor`, `magicLink`, `username`) and require no InsForge-side changes. Plugins that **add tables** create them in `better_auth` automatically — the pool's `search_path` is already scoped to that schema, so new tables inherit the same isolation as the core four. No per-plugin REVOKE template, no per-plugin lockdown step.
 
 ### Organization plugin
 
@@ -464,18 +475,7 @@ export const auth = betterAuth({
 });
 ```
 
-Re-run `npx @better-auth/cli migrate -y`, then **lock down the new tables exactly like the core ones**:
-
-```sql
-REVOKE ALL ON
-  public.organization, public.team, public.member,
-  public."teamMember", public.invitation
-FROM anon, authenticated, project_admin;
-
-NOTIFY pgrst, 'reload schema';
-```
-
-`teamMember` is camelCase in BA's schema, so it must be quoted in SQL. Verify with `curl http://<insforge>/organization?select=id` — should return `permission denied for table organization`.
+Re-run `npx @better-auth/cli migrate -y` — that's it. The new tables land in `better_auth.organization`, `better_auth.team`, `better_auth.member`, `better_auth.teamMember`, `better_auth.invitation`. Verify with `curl http://<insforge>/organization?select=id` (anon) — should return `404 relation "public.organization" does not exist` because PostgREST never sees the schema.
 
 For multi-tenant RLS on app tables, add `org_id` to `request.jwt.claims` by reading `session.activeOrganizationId` in the bridge route and including it as a custom claim:
 
@@ -497,14 +497,14 @@ Then in policies use `current_setting('request.jwt.claims', true)::json->>'org_i
 
 ### Other table-adding plugins
 
-| Plugin | Tables added | REVOKE template |
-|--------|--------------|-----------------|
-| `twoFactor` | `twoFactor` | `REVOKE ALL ON public."twoFactor" FROM anon, authenticated, project_admin;` |
-| `apiKey` | `apikey` | `REVOKE ALL ON public.apikey FROM anon, authenticated, project_admin;` |
-| `passkey` | `passkey` | `REVOKE ALL ON public.passkey FROM anon, authenticated, project_admin;` |
-| `oidcProvider` | `oauthApplication`, `oauthAccessToken`, `oauthConsent` | quote each camelCase name |
+| Plugin | Tables added (all in `better_auth` schema) |
+|--------|--------------------------------------------|
+| `twoFactor` | `twoFactor` |
+| `apiKey` | `apikey` |
+| `passkey` | `passkey` |
+| `oidcProvider` | `oauthApplication`, `oauthAccessToken`, `oauthConsent` |
 
-Rule of thumb: after every `auth migrate`, `\dt public.*` to see the diff, then REVOKE anything Better Auth created.
+Rule of thumb: after every `auth migrate`, `\dt better_auth.*` to see what BA created. No follow-up REVOKE step — `search_path` did the isolation for you.
 
 ## Vite / React-only setups
 
@@ -630,17 +630,17 @@ Server-only vars (read via `process.env` in the BA process) are the same across 
 
 | Mistake | Solution |
 |---------|----------|
-| ❌ Skipping the REVOKE block | ✅ Anyone with your anon key can read all user emails through PostgREST. Always run the REVOKE after the first migrate. |
 | ❌ Forgetting `NOTIFY pgrst, 'reload schema'` after raw psql DDL | ✅ PostgREST returns `404 {}` until reloaded. Use the InsForge CLI for migrations and the notify happens automatically. |
 | ❌ Using Better Auth's `jwt()` plugin directly with InsForge | ✅ It issues asymmetric (EdDSA/ES256/RS256) tokens; InsForge's PostgREST verifies HS256. Use the bridge route instead. |
 | ❌ Using `auth.uid()` for RLS policies | ✅ Use `requesting_user_id()` — Better Auth IDs are strings, not UUIDs. |
-| ❌ FK'ing to `auth.users(id)` | ✅ FK to `public.user(id)` — Better Auth's table. `auth.users` is InsForge's separate native table and irrelevant here. |
+| ❌ FK'ing to `auth.users(id)` (or `public.user(id)`) | ✅ FK to `better_auth.user(id)` — that's where Better Auth puts its tables. `auth.users` is InsForge's native auth (UUID id, irrelevant here); `public.user` no longer exists post-migrate. |
+| ❌ Forgetting `CREATE SCHEMA better_auth` before the first `auth:migrate` | ✅ The migrate fails with "schema better_auth does not exist". The CLI scaffold's `npm run setup` runs schema → migrate → app SQL in order; if you migrate manually, create the schema first. |
+| ❌ Setting `search_path` only inside the BA pool but FK'ing app tables to a schema-unqualified `"user"` | ✅ Outside BA's pool, the Postgres default search_path doesn't include `better_auth`. Always qualify FKs explicitly: `REFERENCES better_auth."user"(id)`. |
 | ❌ Re-using `BETTER_AUTH_SECRET` as the InsForge JWT secret | ✅ They are independent. `BETTER_AUTH_SECRET` is for Better Auth's session cookies; `INSFORGE_JWT_SECRET` is the HS256 key for the bridge JWT. |
 | ❌ Setting the token only once on mount (Pattern A) | ✅ Refresh on a ~50min interval for a 1h JWT, keyed on Better Auth's `useSession()`. |
 | ❌ Forgetting `credentials: 'same-origin'` (or `'include'` cross-origin) on the bridge fetch | ✅ Without credentials, the Better Auth cookie isn't sent and the bridge always returns 401. |
 | ❌ Cross-origin without `sameSite: 'none'; secure` on the BA cookie | ✅ The browser drops the cookie on cross-origin requests by default. Configure Better Auth's cookies for cross-origin explicitly. |
 | ❌ Missing `Origin` header on direct `fetch`/`curl` to Better Auth POSTs | ✅ Better Auth requires `Origin` for CSRF. Browsers send it automatically; server-side clients must add `'Origin: <baseURL>'`. |
-| ❌ Connecting Better Auth as `anon` or `authenticated` after REVOKE | ✅ The connection-pool role must retain privileges. Use `postgres` (or another fully-granted role) in `DATABASE_URL`. |
 | ❌ Realtime client shows `senderId` as the anon UUID instead of the user's BA id (Pattern A only) | ✅ On SDK 1.2.x (current latest) the public client doesn't expose `setAccessToken` — you must call `client.getHttpClient().setAuthToken(token)` PLUS `client.realtime['tokenManager'].setAccessToken(token)`. Use the `setBridgeToken` helper from Pattern A so this stays correct when the public method ships in 1.3.0. Pattern B's `edgeFunctionToken` already pipes into both. |
 | ❌ Realtime publish silently fails for authenticated users (`UNAUTHORIZED`) | ✅ `realtime.messages.sender_id` is `uuid` in core InsForge; Better Auth IDs are strings. One-time fix: `ALTER TABLE realtime.messages ALTER COLUMN sender_id TYPE text;` |
 | ❌ Vite SPA proxying to a separate BA server, sign-out (or any state-changing endpoint) returns 403 | ✅ BA's CSRF check compares the request's `Origin` against its `baseURL`. Either rewrite the proxy's `Origin` header to BA's URL (Vite `proxy.configure`) or add the SPA origin to BA's `trustedOrigins`. Sign-up has looser handling and won't trip this — the bug shows up later. |
