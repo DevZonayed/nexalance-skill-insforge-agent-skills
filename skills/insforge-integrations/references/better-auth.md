@@ -26,9 +26,9 @@ The rest of this guide is the **reference layer**: what each scaffolded file loo
 
 > **Integrating manually** (no CLI, or non-Next stack)? Sequence: (1) `npx @insforge/cli create` or `link`, (2) `npx @insforge/cli secrets get JWT_SECRET`, (3) install deps and fill `.env.local`, (4) write `lib/auth.ts`, (5) `npx @better-auth/cli migrate`, (6) `REVOKE` block, (7) BA route handler, (8) bridge route, (9) `requesting_user_id()` + RLS, (10) `useInsforgeClient` (or server-side `createInsForgeClient`), (11) feature pages. Each numbered step has its own section below.
 
-Two runnable skeletons live alongside this guide:
-- `examples/better-auth-nextjs/` — Next.js App Router, same-origin
-- `examples/better-auth-react/` — Vite + React, same-origin via proxy
+Two runnable starting points:
+- **Next.js** — `npx @insforge/cli link --auth better-auth` (or `create`) scaffolds a working Next 15 + BA project. The `--auth` flag is canonical; the rest of this guide explains the pieces it generates.
+- **Vite + React** — `examples/better-auth-react/` next to this doc. SPA pattern using a Vite proxy + Origin rewrite. CLI doesn't scaffold this yet, so the example is the reference.
 
 ## Key packages
 
