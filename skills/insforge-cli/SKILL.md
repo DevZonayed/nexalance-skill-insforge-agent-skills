@@ -225,7 +225,9 @@ Run with no subcommand for a full health report across all checks.
 ### Analytics Integration — `npx @insforge/cli posthog`
 - `npx @insforge/cli posthog setup` — one-shot connect-and-install: auto-provisions a PostHog account if needed, runs OAuth, detects the project framework (Next.js App/Pages Router, Vite + React, SvelteKit, Astro), installs `posthog-js`, renders the per-framework SDK init template, and writes env vars. See [references/posthog.md](references/posthog.md).
 
-> ⚠️ **Private beta.** PostHog integration is currently being rolled out to early-access partners. Templated install supports the most common stacks; other frameworks fall through to a manual instructions path.
+> ⚠️ **Private beta.** PostHog integration is currently rolling out to early-access partners; older cloud projects and self-hosted backends may not expose `/integrations/posthog/v1/*`.
+> **Availability:** If the CLI fails with `PostHog connect flow unavailable (HTTP 404)`, the project doesn't have PostHog enabled yet — wait for the rollout or ask the InsForge team for early access. Do not work around this by pulling a `phc_` key from a separate PostHog account; the InsForge dashboard won't surface analytics without the OAuth-backed server-side connection.
+> Templated install supports Next.js (App / Pages Router), Vite + React, SvelteKit, and Astro; other frameworks fall through to a manual instructions path.
 
 ### Logs — `npx @insforge/cli logs`
 - `npx @insforge/cli logs <source> [--limit <n>]` — fetch backend container logs (default: 20 entries)

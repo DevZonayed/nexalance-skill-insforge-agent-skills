@@ -2,7 +2,19 @@
 
 One-shot CLI command that connects an InsForge project to PostHog (provisioning a PostHog account if needed) and installs the PostHog SDK into the current directory's app via deterministic per-framework templates.
 
-> ⚠️ **Private beta.** PostHog integration is currently being rolled out to early-access partners. Templated install supports the most common stacks (Next.js App/Pages Router, Vite + React, SvelteKit, Astro); other frameworks fall through to a manual instructions path that prints the `phc_` key for hand integration.
+## Availability
+
+PostHog integration is in private beta. Currently rolling out to early-access partners on InsForge Cloud — older cloud projects and self-hosted backends may not expose `/integrations/posthog/v1/*` yet.
+
+Always start with:
+
+```bash
+npx @insforge/cli posthog setup
+```
+
+If the CLI fails with `PostHog connect flow unavailable (HTTP 404)` or a similar "endpoint not found" error, your project doesn't have PostHog integration enabled yet — wait for the rollout or ask the InsForge team for early access. Do not work around this by manually pulling a `phc_` key from a separate PostHog account and embedding it: the InsForge dashboard will not surface analytics until the OAuth-backed connection is established server-side.
+
+Self-hosted InsForge backends do not currently include PostHog integration. To use PostHog with a self-hosted project, follow PostHog's standard SDK installation docs and configure your own PostHog account directly — InsForge Analytics will not render in this case.
 
 ## Usage
 
