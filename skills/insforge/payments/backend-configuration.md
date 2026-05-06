@@ -115,77 +115,80 @@ Before exposing subscription checkout or customer subscription management UI, im
 
 This must be based on the app's business model. A subject can be a user, team, organization, workspace, tenant, group, or any other billing owner. InsForge cannot infer that automatically.
 
-For anonymous one-time purchases, the app may choose to keep checkout unrestricted. For subscriptions, team/org billing, or any flow where the caller passes `subject`, add policies before shipping UI so one user cannot start checkout or open subscription management for another user's subject.
+For one-time checkout, `subject` is optional. Many apps omit it for guest or cart checkout and pass only `customerEmail`. If you enable RLS on `payments.checkout_sessions`, those `mode = 'payment'` rows need their own narrow policies instead of reusing subject-based subscription policies.
 
-Example for team billing:
+Example for a mixed app where subscriptions belong to the signed-in user and one-time orders are allowed for both authenticated and anonymous shoppers:
 
 ```sql
 ALTER TABLE payments.checkout_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments.customer_portal_sessions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "team members create checkout sessions"
+CREATE POLICY "users create subscription checkout sessions"
 ON payments.checkout_sessions
 FOR INSERT
 TO authenticated
 WITH CHECK (
-  subject_type = 'team'
-  AND subject_id ~* '^[0-9a-f-]{8}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{12}$'
-  AND EXISTS (
-    SELECT 1
-    FROM public.team_members tm
-    WHERE tm.team_id = subject_id::uuid
-      AND tm.user_id = auth.uid()
-  )
+  mode = 'subscription'
+  AND subject_type = 'user'
+  AND subject_id = auth.uid()::text
 );
 
-CREATE POLICY "team members read checkout sessions"
+CREATE POLICY "users read subscription checkout sessions"
 ON payments.checkout_sessions
 FOR SELECT
 TO authenticated
 USING (
-  subject_type = 'team'
-  AND subject_id ~* '^[0-9a-f-]{8}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{12}$'
-  AND EXISTS (
-    SELECT 1
-    FROM public.team_members tm
-    WHERE tm.team_id = subject_id::uuid
-      AND tm.user_id = auth.uid()
-  )
+  mode = 'subscription'
+  AND subject_type = 'user'
+  AND subject_id = auth.uid()::text
 );
 
-CREATE POLICY "team members create portal sessions"
+CREATE POLICY "users create portal sessions"
 ON payments.customer_portal_sessions
 FOR INSERT
 TO authenticated
 WITH CHECK (
-  subject_type = 'team'
-  AND EXISTS (
-    SELECT 1
-    FROM public.team_members tm
-    WHERE tm.team_id = subject_id::uuid
-      AND tm.user_id = auth.uid()
-  )
+  subject_type = 'user'
+  AND subject_id = auth.uid()::text
 );
 
-CREATE POLICY "team members read portal sessions"
+CREATE POLICY "users read portal sessions"
 ON payments.customer_portal_sessions
 FOR SELECT
 TO authenticated
 USING (
-  subject_type = 'team'
-  AND subject_id ~* '^[0-9a-f-]{8}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{12}$'
-  AND EXISTS (
-    SELECT 1
-    FROM public.team_members tm
-    WHERE tm.team_id = subject_id::uuid
-      AND tm.user_id = auth.uid()
-  )
+  subject_type = 'user'
+  AND subject_id = auth.uid()::text
+);
+
+CREATE POLICY "authenticated users create subjectless payment checkout sessions"
+ON payments.checkout_sessions
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  mode = 'payment'
+  AND subject_type IS NULL
+  AND subject_id IS NULL
+);
+
+CREATE POLICY "anon users create subjectless payment checkout sessions"
+ON payments.checkout_sessions
+FOR INSERT
+TO anon
+WITH CHECK (
+  mode = 'payment'
+  AND subject_type IS NULL
+  AND subject_id IS NULL
 );
 ```
 
-Adjust table names, ID casts, and membership checks to the app schema. Do not copy this policy blindly if the app uses organizations, workspaces, groups, string IDs, or user-level billing.
+Subject-less payment rows do not have a built-in ownership field, so there is no single safe generic `SELECT` policy example for them.
 
-If enabling RLS on `payments.checkout_sessions` and the app still needs anonymous one-time checkout, add separate narrow `anon` INSERT and SELECT policies for `mode = 'payment'` rows with `subject_type IS NULL` and `subject_id IS NULL`.
+The `INSERT` policies above are enough to create new checkout sessions. If your app also needs to read `payments.checkout_sessions` for subject-less payment flows, for example to support idempotent retries or another app-specific read path, add `SELECT` policies based on your own business logic and ownership model.
+
+Do not copy a broad `SELECT` policy for all subject-less payment rows. Scope reads to the buyer or checkout attempt using fields and rules defined by your app.
+
+Adjust table names, ID casts, and ownership checks to the app schema. If your app passes a subject for one-time payments too, replace the subject-less `mode = 'payment'` policies with policies that match that subject model.
 
 ## Runtime Integration
 
