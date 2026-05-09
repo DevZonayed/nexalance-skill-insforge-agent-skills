@@ -201,6 +201,7 @@ Test risky schema, RLS, auth, or function changes in an isolated branch project 
 ```bash
 npx @insforge/cli branch create feat-rls --mode schema-only
 # context now points at the branch — re-source .env if your dev server caches it
+# branch runtime starts empty — redeploy any functions/website/compute you'll exercise
 # ... apply your schema / RLS / auth changes via db migrations / SQL ...
 npx @insforge/cli branch merge feat-rls --dry-run --save-sql /tmp/diff.sql
 # review /tmp/diff.sql; on conflict CLI exits 2
