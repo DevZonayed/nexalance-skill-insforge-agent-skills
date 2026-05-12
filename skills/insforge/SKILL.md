@@ -261,8 +261,9 @@ These modules still require HTTP API calls because the CLI does not yet support 
 
 | Module | Backend Configuration |
 |--------|----------------------|
-| **Auth** | [auth/backend-configuration.md](auth/backend-configuration.md) |
 | **AI** | [ai/backend-configuration.md](ai/backend-configuration.md) |
+
+> Auth redirect URL allowlist is now managed via the CLI — use `npx @insforge/cli config export/plan/apply`. Other auth settings (password policy, OAuth providers, verification methods) still live on the dashboard. See the **insforge-cli** skill's Configuration section.
 
 ### Risky backend changes? Use a branch first
 
