@@ -362,8 +362,9 @@ Only render the reset form when `insforge_status=ready` and `token` is present.
 ## Best Practices
 
 1. **Always check auth config first** before implementing
-   - Run `insforge metadata --json` to get auth config, or see [backend-configuration.md](backend-configuration.md)
+   - Run `npx @insforge/cli metadata --json` to get auth config (`requireEmailVerification`, `verifyEmailMethod`, `resetPasswordMethod`, `oAuthProviders`, `allowedRedirectUrls`)
    - This tells you what features to implement
+   - To **add a redirect URL** to the allowlist, use `npx @insforge/cli config apply` — see the **insforge-cli** skill's Configuration section. Other auth settings (password policy, OAuth providers, etc.) are dashboard-only today.
 
 2. **The sign-up page must handle the full registration flow**
    - After calling `signUp()`, if `requireEmailVerification` is true, branch on `verifyEmailMethod`
@@ -450,7 +451,7 @@ if (enabledProviders.includes('github')) {
 ## Recommended Workflow
 
 ```
-1. Get auth config           → See backend-configuration.md
+1. Get auth config           → npx @insforge/cli metadata --json
 2. Check what's enabled      → Email verification? Which OAuth providers?
 3. Build appropriate UI      → Code input vs magic link, OAuth buttons
 4. Implement sign-up         → Handle requireEmailVerification response

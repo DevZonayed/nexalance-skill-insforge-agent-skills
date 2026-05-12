@@ -269,6 +269,9 @@ A: Use `compute update <service-id> --image <new-image-url>`. The machine is res
 **Q: What happens to my service if Fly.io has an outage?**
 A: It's down. InsForge runs your containers on Fly's infrastructure — Fly's uptime is your uptime. For HA, you'd typically deploy multiple services in different regions (future feature).
 
+**Q: Why is the first request after idle slow?**
+A: v1 services scale to zero when idle and wake on the next request (~1s cold start on `shared-1x`). No flag to disable in v1; contact support if you need always-on.
+
 **Q: I see `MANIFEST_UNKNOWN` in a stack trace. What is it?**
 A: After `flyctl` pushes your image, Fly asynchronously aliases the digest from the builder's namespace to your app's namespace. Until that propagates (usually < 8 s) the Machines API returns `400 MANIFEST_UNKNOWN` even though the digest is correct. The InsForge cloud silently retries 4 times with backoff `[2s, 4s, 8s]`, so you almost never see it. If retries exhaust, you get a structured `COMPUTE_IMAGE_NOT_AVAILABLE` 400 with `nextActions` telling you to re-run — re-runs are idempotent and typically succeed instantly because the alias has had time to propagate.
 
