@@ -40,8 +40,8 @@ If no project linked: `npx @insforge/cli create` (new — for non-interactive ag
 
 | Flag | Description |
 |------|-------------|
-| `--json` | Structured JSON output (for scripts and agents) |
-| `-y, --yes` | Skip confirmation prompts |
+| `--json` | Structured JSON output AND skip value-collection prompts (text / select). Errors out if any required param is missing. **Combine with `-y` for destructive commands** so Y/N confirmations are skipped too. |
+| `-y, --yes` | Auto-accept Y/N confirmation prompts (delete? overwrite? etc.). Does NOT skip value-collection prompts — use `--json` for that. |
 
 > All examples below use `npx @insforge/cli`. **Never** call `insforge` directly.
 
