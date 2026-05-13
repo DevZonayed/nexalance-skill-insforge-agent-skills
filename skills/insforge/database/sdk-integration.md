@@ -113,6 +113,8 @@ const { data, count } = await insforge.database
 ## Important Notes
 
 - **Insert requires array format**: Always use `insert([{...}])` not `insert({...})`
+- **Avoid large JSON/JSONB payloads in SDK reads/writes**: PostgREST can consume excessive memory when rows contain very large JSONB payloads. Normalize large or frequently accessed JSON into typed columns or child tables, and use JSONB only for small metadata/config.
+- **Select only the columns you need**: If a table has any large text/JSONB columns, avoid `select('*')` in list views. Fetch lightweight columns first, then load the large field only on a detail screen or via a purpose-built RPC.
 - All methods return `{ data, error }` - always check for errors
 
 ---
@@ -187,6 +189,11 @@ Fields:
    - Create a corresponding TypeScript interface/type for type safety
    - This helps catch errors at compile time and improves developer experience
 
+2. **Normalize large JSONB data before building CRUD flows**
+   - Do not store large app state, document bodies, analytics payloads, or arrays of nested objects in a single JSONB column that the app reads/writes through PostgREST.
+   - Prefer real columns for fields you filter, sort, display in lists, or update independently.
+   - Move repeated nested objects into child tables with foreign keys and indexes.
+
 ### Example: Generate Interface from Schema
 
 ```typescript
@@ -214,7 +221,8 @@ const posts = data as Post[]
 
 ```
 1. Check table schema     → insforge db tables / insforge db query
-2. Generate TypeScript interface for the table
-3. Cast query results to the interface for type safety
-4. Handle errors appropriately
+2. Check for large JSONB fields and normalize them if needed
+3. Generate TypeScript interface for the table
+4. Cast query results to the interface for type safety
+5. Handle errors appropriately
 ```
