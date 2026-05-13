@@ -32,7 +32,7 @@ npx @insforge/cli current   # verify linked project
 ```
 
 If not authenticated: `npx @insforge/cli login`
-If no project linked: `npx @insforge/cli create` (new) or `npx @insforge/cli link` (existing)
+If no project linked: `npx @insforge/cli create` (new — for non-interactive agent use, pass `--json` with `--name`, `--template`, `--org-id`, `--region` to skip all prompts; `-y` alone is NOT enough) or `npx @insforge/cli link` (existing)
 
 > **Important:** In InsForge, API keys are full-access admin keys, equivalent to service role keys on other platforms. Treat them as server-only secrets and never expose them in frontend code or public env vars.
 
@@ -40,8 +40,8 @@ If no project linked: `npx @insforge/cli create` (new) or `npx @insforge/cli lin
 
 | Flag | Description |
 |------|-------------|
-| `--json` | Structured JSON output (for scripts and agents) |
-| `-y, --yes` | Skip confirmation prompts |
+| `--json` | Structured JSON output AND skip value-collection prompts (text / select). Errors out if any required param is missing. **Combine with `-y` for destructive commands** so Y/N confirmations are skipped too. |
+| `-y, --yes` | Auto-accept Y/N confirmation prompts (delete? overwrite? etc.). Does NOT skip value-collection prompts — use `--json` for that. |
 
 > All examples below use `npx @insforge/cli`. **Never** call `insforge` directly.
 
