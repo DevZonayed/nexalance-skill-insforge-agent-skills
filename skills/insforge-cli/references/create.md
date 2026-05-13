@@ -16,6 +16,7 @@ npx @insforge/cli create [options]
 | `--org-id <id>` | Organization ID |
 | `--region <region>` | Region: `us-east`, `us-west`, `eu-central`, `ap-southeast` |
 | `--template <template>` | Template: `react`, `nextjs`, `empty` |
+| `--json` | Non-interactive mode. Skips all value-collection prompts (including the "Directory name:" prompt) and errors out if any required flag is missing. Required for agent / CI use. |
 
 ## Interactive Mode
 
@@ -29,7 +30,7 @@ For CI/CD or agent use, pass `--json` along with all required flags:
 npx @insforge/cli create --json --name my-app --org-id org_123 --region us-east --template react
 ```
 
-`--json` is the only flag that suppresses **all** interactive prompts. The `-y` flag only auto-accepts confirmations (Y/N) — it does NOT skip text/select prompts like `Directory name:`, which will still block agents that can't drive stdin (e.g., Codex sandbox). Always use `--json` for programmatic invocation.
+`--json` skips value-collection prompts (text inputs like `Directory name:`, pickers like organization / region) and errors out if any required flag is missing. The `-y` flag is a different feature — it only auto-accepts Y/N confirmations and does NOT suppress value-collection prompts. For `create` specifically, `--json` alone is sufficient (there are no Y/N confirmations); for destructive commands like `delete`, agents should pass both `--json` and `-y`. Agents sandboxed from stdin (e.g., Codex) hang on any unsuppressed prompt — always pass `--json` for programmatic create.
 
 ## What It Does
 
