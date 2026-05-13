@@ -23,11 +23,13 @@ Without flags, the command prompts for organization, project name, region, and t
 
 ## Non-Interactive Mode
 
-Provide all required flags for CI/CD or agent use:
+For CI/CD or agent use, pass `--json` along with all required flags:
 
 ```bash
-npx @insforge/cli create --name my-app --org-id org_123 --region us-east --template react -y
+npx @insforge/cli create --json --name my-app --org-id org_123 --region us-east --template react
 ```
+
+`--json` is the only flag that suppresses **all** interactive prompts. The `-y` flag only auto-accepts confirmations (Y/N) — it does NOT skip text/select prompts like `Directory name:`, which will still block agents that can't drive stdin (e.g., Codex sandbox). Always use `--json` for programmatic invocation.
 
 ## What It Does
 
@@ -48,11 +50,11 @@ Project details: ID, name, appkey, region, and OSS host URL.
 # Interactive — prompts for everything
 npx @insforge/cli create
 
-# Non-interactive with all options
-npx @insforge/cli create --name blog-app --org-id org_abc --region us-east --template react -y
+# Non-interactive with all options (agents, CI)
+npx @insforge/cli create --json --name blog-app --org-id org_abc --region us-east --template react
 
 # Create with empty template (no frontend scaffolding)
-npx @insforge/cli create --name api-only --org-id org_abc --region eu-central --template empty
+npx @insforge/cli create --json --name api-only --org-id org_abc --region eu-central --template empty
 ```
 
 ## Notes

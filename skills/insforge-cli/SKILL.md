@@ -32,7 +32,7 @@ npx @insforge/cli current   # verify linked project
 ```
 
 If not authenticated: `npx @insforge/cli login`
-If no project linked: `npx @insforge/cli create` (new) or `npx @insforge/cli link` (existing)
+If no project linked: `npx @insforge/cli create` (new — for non-interactive agent use, pass `--json` with `--name`, `--template`, `--org-id`, `--region` to skip all prompts; `-y` alone is NOT enough) or `npx @insforge/cli link` (existing)
 
 > **Important:** In InsForge, API keys are full-access admin keys, equivalent to service role keys on other platforms. Treat them as server-only secrets and never expose them in frontend code or public env vars.
 
