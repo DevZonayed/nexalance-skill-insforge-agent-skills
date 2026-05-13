@@ -2,24 +2,26 @@
 
 InsForge's AI feature is now the Model Gateway backed by OpenRouter. New app
 code should call OpenRouter directly with the OpenAI SDK and an
-`OPENROUTER_API_KEY` copied from the InsForge Dashboard.
+`OPENROUTER_API_KEY` set up by `npx @insforge/cli ai setup`.
 
 The old `ai.configs` / `ai.usage` database tables and AI Settings model
 configuration flow are deprecated. Do not query them for new implementations.
 
 ## Setup
 
-Ask the user to copy the active key:
+Run the CLI setup from the linked app directory first:
 
-```text
-InsForge Dashboard -> Model Gateway -> Overview -> Active OpenRouter key -> copy
+```bash
+npx @insforge/cli ai setup
 ```
 
-Then add it to the app's server-side environment:
+This fetches the active OpenRouter key from the linked InsForge backend and writes it to `.env.local` as:
 
 ```bash
 OPENROUTER_API_KEY=sk-or-v1-...
 ```
+
+For non-standard projects, use `--env-file <path>` to choose a different env file. If the command is unavailable, ask the user to upgrade `@insforge/cli` or copy the key from the dashboard manually.
 
 For framework-specific placement:
 
@@ -91,8 +93,8 @@ console.log(completion.choices[0]?.message?.content)
 If `OPENROUTER_API_KEY` is missing:
 
 1. Stop before implementing AI calls that would fail.
-2. Ask the user to copy the active OpenRouter key from the InsForge Dashboard.
-3. Add the key as a server-side env var.
+2. Run `npx @insforge/cli ai setup` from the linked app directory.
+3. If the command is unavailable, ask the user to upgrade `@insforge/cli` or copy the key manually from the dashboard.
 4. Restart the dev server so the env var is loaded.
 
 ## Deprecated Backend Proxy
@@ -108,7 +110,7 @@ and do not depend on the old AI Settings flow.
 
 | Mistake | Solution |
 |---------|----------|
-| Asking the user to configure models in AI Settings | Ask them to copy the OpenRouter key from Model Gateway |
+| Asking the user to configure models in AI Settings | Run `npx @insforge/cli ai setup` before adding OpenRouter code |
 | Querying `ai.configs` or `ai.usage` | Use OpenRouter model APIs and activity APIs |
 | Putting the key in public frontend env vars | Keep `OPENROUTER_API_KEY` server-side |
 | Using the deprecated InsForge SDK AI module for new code | Use OpenRouter with the OpenAI SDK |

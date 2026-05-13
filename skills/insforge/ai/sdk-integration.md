@@ -14,17 +14,19 @@ Official OpenRouter references:
 
 ## First: Get the API Key
 
-Ask the user to copy the active OpenRouter key from the InsForge Dashboard:
+Run the CLI setup from the linked app directory before adding AI code:
 
-```text
-InsForge Dashboard -> Model Gateway -> Overview -> Active OpenRouter key -> copy
+```bash
+npx @insforge/cli ai setup
 ```
 
-Store it as a server-side environment variable:
+This fetches the active OpenRouter key from the linked InsForge backend and stores it as a server-side environment variable in `.env.local`:
 
 ```bash
 OPENROUTER_API_KEY=sk-or-v1-...
 ```
+
+For a non-standard env file, use `npx @insforge/cli ai setup --env-file <path>`. If the command is unavailable, ask the user to upgrade `@insforge/cli` or copy the key from the dashboard manually.
 
 Never put this key in public browser env vars such as `NEXT_PUBLIC_*`,
 `VITE_*`, `PUBLIC_*`, or `REACT_APP_*`. For browser apps, create a server API
@@ -178,7 +180,7 @@ curl https://openrouter.ai/api/v1/videos/models \
 ```
 
 The InsForge Dashboard Model Gateway model list is also a good place for the
-user to browse supported model IDs and copy the active key.
+user to browse supported model IDs and verify the active key status.
 
 ## Deprecated Fallback: InsForge SDK AI Module
 

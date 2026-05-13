@@ -24,13 +24,13 @@ via `npx @insforge/cli db query` -- see the Setup section of
 
 ### AI Client
 
-Ask the user to copy the active OpenRouter key from:
+Run the CLI setup from the linked app directory before adding embedding code:
 
-```text
-InsForge Dashboard -> Model Gateway -> Overview -> Active OpenRouter key -> copy
+```bash
+npx @insforge/cli ai setup
 ```
 
-Store it server-side:
+This stores the active OpenRouter key server-side in `.env.local`:
 
 ```bash
 OPENROUTER_API_KEY=sk-or-v1-...
