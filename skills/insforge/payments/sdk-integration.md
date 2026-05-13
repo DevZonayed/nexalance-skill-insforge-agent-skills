@@ -47,14 +47,16 @@ If the buyer is signed in, prefer passing a subject so checkout RLS can use the 
 
 If the payment should fulfill an app record such as an order, credit grant, download, or booking, create that app record first and pass its ID in checkout metadata. Do not mark it paid from the success URL.
 
+Signed-in checkout with subject-based RLS:
+
 ```typescript
 const { data, error } = await insforge.payments.createCheckoutSession('test', {
   mode: 'payment',
   lineItems: [{ stripePriceId: 'price_123', quantity: 1 }],
   successUrl: `${window.location.origin}/checkout/success`,
   cancelUrl: `${window.location.origin}/pricing`,
-  subject: user ? { type: 'user', id: user.id } : undefined,
-  customerEmail: user?.email ?? null,
+  subject: { type: 'user', id: user.id },
+  customerEmail: user.email ?? null,
   metadata: { order_id: order.id },
   idempotencyKey: `cart:${cartId}`
 })

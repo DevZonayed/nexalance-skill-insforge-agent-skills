@@ -170,7 +170,7 @@ If subject-less checkout uses idempotency keys, add a matching `SELECT` policy f
 
 Do not copy a broad `SELECT` policy for all subject-less payment rows. Scope reads to the buyer or checkout attempt using fields and rules defined by your app.
 
-Adjust table names, ID casts, and ownership checks to the app schema. If your app passes a subject for one-time payments too, replace the subject-less `mode = 'payment'` policies with policies that match that subject model.
+Adjust table names, ID casts, and ownership checks to the app schema. If one-time payments use a different ownership model than subscriptions, split the combined `mode IN ('subscription', 'payment')` checkout policies into separate per-mode policies.
 
 ## Runtime Integration
 
