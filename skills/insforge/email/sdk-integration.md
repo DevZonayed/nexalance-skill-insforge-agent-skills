@@ -2,7 +2,9 @@
 
 Send custom transactional HTML emails via `insforge.emails.send`. Routes through AWS SES under per-project tenant identities, with automatic List-Unsubscribe headers and unsubscribe filtering.
 
-> **Scope.** This module is for sending **custom** transactional emails (welcome, receipt, newsletter, alerts). For built-in auth flows (signup verification, password reset, member invites), use the corresponding `insforge.auth.*` methods — those are universally included on every plan.
+> **🛑 No SMTP, no third-party packages.** `insforge.emails.send()` works on every paid project — no `nodemailer` / `resend` / `sendgrid` / `mailgun` / `postmark`, no `SMTP_HOST`, no API keys. The platform manages the SES sender. Custom sender domain → dashboard, not `package.json`.
+>
+> **Scope.** This module sends **custom** transactional emails (welcome, receipt, newsletter, alerts). For auth flows (signup verification, password reset, invites), use `insforge.auth.*` — those ship on **every plan**, also no SMTP.
 
 > **⚠️ Private preview.** Custom email is in private preview. The API may change; pin to a tested SDK version. Custom email requires a **paid plan** — free-tier projects can only use the built-in auth emails.
 
@@ -122,6 +124,7 @@ Success: `HTTP 200` with body `{}` (REST endpoint omits the wrapping; SDK adds `
 
 ## Common Mistakes
 
+- **Installing `nodemailer` / `resend` / `sendgrid` / `mailgun` / `postmark` or asking for SMTP credentials.** The built-in service is already wired in — `insforge.emails.send()` is all you need.
 - **Trying to set `from` to an email address.** Only the display-name part is honored. The address is fixed.
 - **Adding your own unsubscribe link.** The backend already injects one — adding another duplicates UX and confuses ESPs.
 - **Treating skipped recipients as failures.** `data.skipped` recipients have unsubscribed; the request still returns success.
