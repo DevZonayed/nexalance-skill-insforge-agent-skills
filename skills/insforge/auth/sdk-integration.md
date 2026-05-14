@@ -4,6 +4,8 @@ User authentication, registration, and session management via `insforge.auth`.
 
 > **⚠️ Deprecated Packages**: The packages `@insforge/react`, `@insforge/nextjs`, and `@insforge/react-router` are **deprecated** and should NOT be used. Use `@insforge/sdk` directly for all authentication flows. Build your own auth UI components using the SDK methods documented below.
 
+> **📧 No SMTP for auth emails.** Signup verification, password reset, magic links, and invites ship on **every plan** (free included) — sent by the InsForge platform. **Never install `nodemailer` / `resend` / `sendgrid` / `mailgun` / `postmark` or ask the user for SMTP credentials.** For custom transactional email, see [email/sdk-integration.md](../email/sdk-integration.md) — also no SMTP.
+
 ## Setup
 
 First, ensure your `.env` file is configured with your InsForge URL and anon key. Get the anon key with `npx @insforge/cli secrets get ANON_KEY`. See the main [SKILL.md](../SKILL.md) for framework-specific variable names and full setup steps.
