@@ -211,9 +211,15 @@ npx @insforge/cli logs postgREST.logs --limit 50
 npx @insforge/cli metadata --json
 ```
 
-**Information gathered**: Auth error details, RLS violation logs around the failing request, auth configuration state.
+4. If postgREST.logs shows an RLS denial and you need to read the policy that fired, inspect the live policies on the affected table:
 
-> This scenario covers **runtime** auth failures (a specific login or request failed). For a proactive audit of RLS policies, secrets, or auth provider configuration without a concrete failing request, use `insforge-backend-advisor` → [Security Audit](../insforge-backend-advisor/SKILL.md#security-audit).
+```bash
+npx @insforge/cli db policies
+```
+
+**Information gathered**: Auth error details, RLS violation logs around the failing request, auth configuration state, active RLS policies on the affected table.
+
+> This scenario covers **runtime** auth failures (a specific login or request failed). For a full proactive audit of RLS policies, secrets, or auth provider configuration across the whole project, use `insforge-backend-advisor` → [Security Audit](../insforge-backend-advisor/SKILL.md#security-audit).
 
 ---
 
