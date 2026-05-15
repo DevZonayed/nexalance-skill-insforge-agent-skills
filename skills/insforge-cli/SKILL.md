@@ -225,7 +225,7 @@ Run with no subcommand for a full health report across all checks.
 ### Analytics Integration — `npx @insforge/cli posthog`
 - `npx @insforge/cli posthog setup` — ensures the InsForge dashboard has a PostHog connection (auto-provisioning / OAuth if missing, no-op if already connected), then runs the official PostHog setup wizard (`npx @posthog/wizard`) to install + wire the SDK into the app. See [references/posthog.md](references/posthog.md).
 
-> ⚠️ **Private beta.** PostHog integration is currently rolling out to early-access partners; older cloud projects and self-hosted backends may not expose `/integrations/posthog/v1/*`. If the CLI fails with `PostHog connect flow unavailable (HTTP 404)`, the project doesn't have PostHog enabled yet — wait for the rollout or ask the InsForge team for early access.
+> ⚠️ **Beta.** PostHog integration is rolling out across InsForge Cloud; older cloud projects and self-hosted backends may not expose `/integrations/posthog/v1/*` yet. If the CLI fails with `PostHog connect flow unavailable (HTTP 404)`, the project doesn't have PostHog enabled yet — wait for the rollout or ask the InsForge team to enable it. Do not work around this by pulling a `phc_` key from a separate PostHog account and embedding it in the app's env: events will flow to PostHog but the InsForge dashboard's Analytics page reads from a server-side OAuth-backed `posthog_connections` row that only `posthog setup` populates — without it the page stays empty even though the integration "looks" wired.
 
 ### Logs — `npx @insforge/cli logs`
 - `npx @insforge/cli logs <source> [--limit <n>]` — fetch backend container logs (default: 20 entries)

@@ -4,7 +4,7 @@ One-shot command that ensures the InsForge dashboard has a PostHog connection, t
 
 ## Availability
 
-PostHog integration is in private beta. If `cli-start` returns `PostHog connect flow unavailable (HTTP 404)`, this project doesn't have PostHog enabled yet — wait for the rollout or ask the InsForge team for early access. Self-hosted backends don't currently expose `/integrations/posthog/v1/*` and this command won't work there; users on self-hosted should install PostHog directly per [PostHog's docs](https://posthog.com/docs/libraries).
+PostHog integration is in beta. If `npx @insforge/cli posthog setup` fails with `PostHog connect flow unavailable (HTTP 404)`, this project doesn't have PostHog enabled yet — wait for the rollout or ask the InsForge team to enable it. Self-hosted backends don't currently expose `/integrations/posthog/v1/*` and this command won't work there; users on self-hosted should install PostHog directly per [PostHog's docs](https://posthog.com/docs/libraries). Do not work around the 404 by pulling a `phc_` key from a separate PostHog account and embedding it in the app's env — events will flow to PostHog but the InsForge Analytics page reads from a server-side OAuth-backed `posthog_connections` row that only `posthog setup` populates, so the page stays empty even though the integration "looks" wired.
 
 ## Usage
 
