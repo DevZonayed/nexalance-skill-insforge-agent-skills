@@ -4,11 +4,15 @@ description: >-
   Use this skill for proactive backend health audits in an InsForge project —
   security misconfigurations, performance regressions, and system health issues
   surfaced by `diagnose advisor`, plus the backend-side deep-dives that pair
-  with each advisor issue. Trigger on requests like "health check", "audit my
-  backend", "review security", "check RLS policies", "find slow queries",
-  "backend performance review", "EC2/database/system health", or pre-launch
-  readiness audits. For reactive runtime errors (SDK error objects, HTTP 4xx/5xx,
-  function failures, deploy failures), use `insforge-debug` instead.
+  with each advisor issue. Also use this skill when a user reports
+  backend-wide performance degradation (high CPU/memory, all responses slow,
+  connection pool exhaustion, lock contention) without a single failing request.
+  Trigger on requests like "health check", "audit my backend", "review
+  security", "check RLS policies", "find slow queries", "backend performance
+  review", "high CPU/memory", "everything is slow", "EC2/database/system
+  health", or pre-launch readiness audits. For reactive runtime errors with a
+  single concrete failing request (SDK error objects, HTTP 4xx/5xx, function
+  failures, deploy failures), use `insforge-debug` instead.
 license: MIT
 metadata:
   author: insforge
@@ -30,6 +34,7 @@ Proactive backend health auditing for InsForge projects. This skill drives the `
 | Doing a periodic health check / pre-launch audit | A specific request just returned an error or unexpected status |
 | Reviewing security posture (RLS, secrets, auth config) | A user can't log in / token expired / OAuth callback failing |
 | Looking for slow queries, bloat, missing indexes proactively | A specific endpoint is slow *right now* and the user pasted the URL |
+| Backend-wide degradation: high CPU/memory, all responses slow, connection pool exhausted, locks contending | A single request failed or timed out |
 | "What's wrong with my backend?" without a concrete symptom | "Why did THIS request fail?" with a concrete symptom |
 
 If you're not sure which side you're on: a concrete error/URL/status code → `insforge-debug`. A general "look for problems" → here.
@@ -61,13 +66,15 @@ Each issue object includes `ruleId`, `severity`, `category`, `title`, `descripti
 
 ## Quick Triage
 
-Match the issue's `category` to a deep-dive section.
+Match the issue's `category` (after running a scan) or the user's symptom (if they came in cold) to a deep-dive section.
 
-| Issue category | Deep-dive section |
-|----------------|-------------------|
-| `security` (RLS, exposed config, secrets) | [Security Audit](#security-audit) |
-| `performance` (slow queries, indexes, bloat) | [Performance Audit](#performance-audit) |
-| `health` (connections, locks, system metrics) | [System Health Audit](#system-health-audit) |
+| Source | Maps to | Deep-dive section |
+|--------|---------|-------------------|
+| Advisor `category=security` | RLS, exposed config, secrets | [Security Audit](#security-audit) |
+| Advisor `category=performance` | Slow queries, indexes, bloat | [Performance Audit](#performance-audit) |
+| Advisor `category=health` | Connections, locks, system metrics | [System Health Audit](#system-health-audit) |
+| Symptom: "everything is slow", high CPU/memory, all responses slow | Backend-wide degradation | [System Health Audit](#system-health-audit) |
+| Symptom: "this query is slow" (without a single failing URL) | Query-level performance | [Performance Audit](#performance-audit) |
 
 For a mixed report or a "what should I fix first?" question, work through critical issues across all categories before warnings.
 
