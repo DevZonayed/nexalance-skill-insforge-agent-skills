@@ -40,7 +40,7 @@ For "why was this request denied?":
 | Authenticated user gets empty result on own data | Wrong helper function (`auth.uid()` returns UUID; if `user_id` column is TEXT from third-party auth, use `requesting_user_id()` instead) |
 | Insert fails for owner with "new row violates RLS policy" | Missing `WITH CHECK` matching the `USING`, or `WITH CHECK` references columns not in payload |
 | Third-party auth (Clerk/Auth0/etc.) users get blanket deny | Wrong helper (`auth.uid()` expects InsForge-issued JWT; third-party providers need `requesting_user_id()` with the right claim extraction) |
-| Anonymous user can read sensitive table | No policy or policy applies to `public` role without filter |
+| Anonymous user can read sensitive table | RLS not enabled on the table (forgot `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`), or a policy applies to `public` / `anon` role without filter, or the connection is using a role with `BYPASSRLS` |
 
 ## Boundaries
 
