@@ -5,10 +5,12 @@ Static-scan engine that audits the project against a rule catalog and returns is
 ## Command
 
 ```bash
-npx @insforge/cli diagnose advisor [--severity critical|warning|info] [--category security|performance|health] [--limit <n>]
+npx @insforge/cli diagnose advisor [--severity critical|warning|info] [--category security|performance|health] [--limit <n>] [--json]
 ```
 
 Default limit: 50. Requires Platform login — **not available on backends linked via `--api-key`**.
+
+**Add `--json` when you need the full issue payload.** Human-readable output is a 4-column table (severity / category / affectedObject / title). Fields like `ruleId`, `description`, `recommendation`, `isResolved` are only emitted by `--json` — without the flag, you can't read or act on the recommendation programmatically.
 
 ## What you see
 
@@ -46,12 +48,12 @@ Each scan returns:
 
 ## Iteration workflow
 
-```
-1. Scan:    diagnose advisor --severity critical
+```text
+1. Scan:    diagnose advisor --severity critical --json
 2. Triage:  pick one issue, read affectedObject + recommendation
 3. Verify:  inspect the affected object (db query / db policies / metadata)
 4. Fix:     apply the change (migration / RLS edit / secret rotation / config update)
-5. Re-scan: diagnose advisor — confirm isResolved=true for that ruleId
+5. Re-scan: diagnose advisor --json — confirm isResolved=true for that ruleId
 6. Repeat with next critical, then warnings, then info
 ```
 
