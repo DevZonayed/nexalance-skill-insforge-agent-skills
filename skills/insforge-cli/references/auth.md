@@ -15,12 +15,12 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY profiles_owner_select ON public.profiles
 FOR SELECT TO authenticated
-USING (user_id = auth.uid());
+USING (user_id = (SELECT auth.uid()));
 
 CREATE POLICY profiles_owner_update ON public.profiles
 FOR UPDATE TO authenticated
-USING (user_id = auth.uid())
-WITH CHECK (user_id = auth.uid());
+USING (user_id = (SELECT auth.uid()))
+WITH CHECK (user_id = (SELECT auth.uid()));
 
 CREATE OR REPLACE FUNCTION public.create_profile_for_new_user()
 RETURNS TRIGGER AS $$

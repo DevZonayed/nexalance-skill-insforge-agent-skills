@@ -14,6 +14,7 @@ InsForge governs `storage.objects` with PostgreSQL Row Level Security, not with 
 |------|-------------|-------------|
 | `anon` | Unauthenticated callers | No valid session token |
 | `authenticated` | Logged-in end users | Valid session token in the request |
+
 The `auth.jwt()` helper returns the caller's full claims as `jsonb`. Most policies use `auth.jwt() ->> 'sub'` for ownership checks, but you can read any claim — `->> 'role'`, `->> 'org_id'`, custom claims from third-party providers (Better Auth, Clerk, Auth0, WorkOS, Stytch, Kinde).
 
 ### What ships by default

@@ -150,6 +150,8 @@ Checkout creation needs an `INSERT` policy on `payments.checkout_sessions`. If t
 
 If subscriptions bill teams, policies should check team membership. If subscriptions bill organizations, workspaces, groups, or users, policies should check that model instead. Do not let generated apps pass arbitrary subject IDs without matching policies.
 
+Subject-less `mode = 'payment'` rows do not have a built-in ownership field. Do not add a broad `SELECT` policy for all subject-less payment rows; scope reads to a checkout attempt or app-owned entity your app controls.
+
 Example for a signed-in app where subscriptions and one-time checkout attempts belong to the authenticated user:
 
 ```sql

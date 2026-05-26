@@ -54,7 +54,7 @@ USING (
   AND EXISTS (
     SELECT 1 FROM public.orders
     WHERE id = NULLIF(split_part(realtime.channel_name(), ':', 2), '')::uuid
-      AND user_id = auth.uid()
+      AND user_id = (SELECT auth.uid())
   )
 );
 ```
@@ -72,7 +72,7 @@ WITH CHECK (
   AND EXISTS (
     SELECT 1 FROM public.chat_members
     WHERE room_id = NULLIF(split_part(channel_name, ':', 2), '')::uuid
-      AND user_id = auth.uid()
+      AND user_id = (SELECT auth.uid())
   )
 );
 ```
