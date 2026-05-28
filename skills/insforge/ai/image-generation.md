@@ -66,11 +66,13 @@ both `url` and `key` in the database.
 
 Do not store raw base64 image data or large binary blobs in Postgres. Store
 metadata and Storage references in the database; keep image bytes in Storage.
+Derive owner, tenant, or session fields from the authenticated server-side
+context; never accept ownership IDs from the browser.
 
 ```typescript
 const imageResponse = await fetch(imageUrl)
 const imageBlob = await imageResponse.blob()
-const storageKey = `generated/generated-${Date.now()}.png`
+const storageKey = `generated/${crypto.randomUUID()}.png`
 
 const { data, error } = await insforge.storage
   .from('images')
@@ -80,7 +82,13 @@ if (error) {
   throw error
 }
 
+const { data: userData, error: userError } = await insforge.auth.getCurrentUser()
+if (userError || !userData?.user?.id) {
+  throw userError ?? new Error('Authentication required')
+}
+
 await insforge.database.from('generated_images').insert([{
+  user_id: userData.user.id,
   prompt,
   image_url: data.url,
   image_key: data.key,
@@ -95,7 +103,9 @@ await insforge.database.from('generated_images').insert([{
 3. Persist generated images in InsForge Storage before storing database rows.
 4. Save the original prompt, model ID, storage `url`, and storage `key` when the
    product needs reproducibility or deletion.
-5. Use direct HTTP when OpenAI SDK types reject OpenRouter-specific image
+5. Use authenticated owner, session, or tenant fields on generated-image rows so
+   RLS can restrict access.
+6. Use direct HTTP when OpenAI SDK types reject OpenRouter-specific image
    fields; do not remove those fields to satisfy TypeScript.
 
 ## Common Mistakes
