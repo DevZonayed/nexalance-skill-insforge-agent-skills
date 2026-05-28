@@ -21,12 +21,20 @@ Start with [overview.md](overview.md): run `npx @insforge/cli ai setup`, keep
 
 For a chatbot app, keep session/message rows in InsForge and protect them with
 RLS. In a server route/action, insert the user message, call OpenRouter, then
-insert the assistant response. InsForge database inserts use array format.
+insert the assistant response. Derive ownership from the authenticated
+server-side context or enforce it through the parent chat session's RLS policy;
+never trust a browser-supplied `user_id`. InsForge database inserts use array
+format.
 
 ```typescript
 type ChatRole = 'system' | 'user' | 'assistant'
 
 async function sendChatMessage(sessionId: string, content: string) {
+  const { data: userData, error: userError } = await insforge.auth.getCurrentUser()
+  if (userError || !userData?.user?.id) {
+    throw userError ?? new Error('Authentication required')
+  }
+
   const history = await insforge.database
     .from('chat_messages')
     .select('role, content')
@@ -39,7 +47,12 @@ async function sendChatMessage(sessionId: string, content: string) {
 
   const { error: userInsertError } = await insforge.database
     .from('chat_messages')
-    .insert([{ session_id: sessionId, role: 'user', content }])
+    .insert([{
+      session_id: sessionId,
+      user_id: userData.user.id,
+      role: 'user',
+      content,
+    }])
 
   if (userInsertError) {
     throw userInsertError
@@ -69,6 +82,7 @@ async function sendChatMessage(sessionId: string, content: string) {
     .from('chat_messages')
     .insert([{
       session_id: sessionId,
+      user_id: userData.user.id,
       role: 'assistant',
       content: answer,
       model: completion.model,
