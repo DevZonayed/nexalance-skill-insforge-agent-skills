@@ -1,6 +1,6 @@
 ---
 name: insforge-cli
-description: Use this skill for InsForge CLI database work: SQL migrations, raw SQL inspection, RLS policies, schema grants, indexes, triggers, functions, vector/pgvector setup, imports, and exports. For app code with @insforge/sdk, use the app SDK skill instead.
+description: Use this skill for InsForge CLI database work: SQL migrations, raw SQL inspection, RLS policies, schema grants, indexes, triggers, functions, integrity rules, vector/pgvector setup, imports, and exports. For app code with @insforge/sdk, use the app SDK skill instead.
 license: MIT
 metadata:
   author: insforge
@@ -44,10 +44,15 @@ When the project is already linked, use the current linked project. Run login, p
 - For production-quality `SECURITY DEFINER` helpers, set a fixed search path, for example `SET search_path = public`.
 - Include `WITH CHECK` for INSERT and UPDATE policies so writes cannot create rows the user should not own.
 
+## Integrity Guidance
+
+For counters, balances, latest pointers, append-only history, state transitions, lifecycle guards, protected deletes, or trigger-maintained columns, read `references/db-integrity.md` before writing migrations.
+
 ## References
 
 - `references/db-migrations.md` - migration file creation and apply workflow.
 - `references/db-query.md` - raw SQL execution and inspection.
+- `references/db-integrity.md` - constraints, triggers, derived state, lifecycle guards, append-only history, and server-maintained fields.
 - `references/db-rls.md` - InsForge/Postgres RLS patterns, recursion avoidance, and policy guidance.
 - `references/db-vector.md` - pgvector extension, vector schema, distance operators, indexes, and vector search SQL/RPC patterns.
 - `references/db-export.md` / `references/db-import.md` - schema or data import/export tasks.
