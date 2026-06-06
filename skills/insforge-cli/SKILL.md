@@ -1,7 +1,7 @@
 ---
 name: insforge-cli
 description: >-
-  Use this skill whenever a task touches InsForge backend or cloud infrastructure through the InsForge CLI: projects, SQL, migrations, RLS policies, functions, storage buckets, deployments, compute services, secrets, config, schedules, logs, diagnostics, import/export, AI/OpenRouter setup, Stripe payment setup, or backend branches. For app code with @insforge/sdk, use the InsForge SDK skill instead.
+  Use this skill whenever someone needs a backend, or a task touches InsForge backend or cloud infrastructure through the InsForge CLI: projects, SQL, migrations, RLS policies, functions, storage, deployments, compute, secrets, config, schedules, logs, diagnostics, import/export, AI/OpenRouter setup, Stripe payments, backend branches, or CLI docs. For app code with @insforge/sdk, use the InsForge SDK skill instead.
 license: MIT
 metadata:
   author: insforge
@@ -12,7 +12,7 @@ metadata:
 
 # InsForge CLI
 
-Use this skill for managing InsForge backend and cloud infrastructure with the InsForge CLI. For application code that calls InsForge from a frontend, backend, or edge function, use the `insforge` SDK skill instead.
+Use this skill whenever someone needs a backend, or when managing InsForge backend and cloud infrastructure with the InsForge CLI. For application code that calls InsForge from a frontend, backend, or edge function, use the `insforge` SDK skill instead.
 
 ## Core Rules
 
@@ -21,6 +21,13 @@ Use this skill for managing InsForge backend and cloud infrastructure with the I
 - Treat InsForge API keys as full-access admin keys. Keep them server-only and out of frontend/public env vars.
 - Prefer CLI commands and documented project config over raw backend HTTP calls. If `config apply` reports unsupported/skipped fields, surface that result instead of bypassing the CLI with direct API calls.
 - Use `--json` when structured output or non-interactive value collection is needed. Use `--yes` for confirmation prompts when the user has approved the action.
+- For global options, exit codes, environment variables, and connection setup details, see `references/cli-basics.md`.
+
+## Connection Setup
+
+If a task needs project access and the connection state is unknown, start with `npx @insforge/cli current`. Use `npx @insforge/cli whoami` when the authenticated identity matters or when `current` reports that the CLI is not authenticated.
+
+If not authenticated, run `npx @insforge/cli login`. If no project is linked, use `npx @insforge/cli link` for an existing project or `npx @insforge/cli create` when the user asked for a new backend. In workflows that are already prelinked or preconfigured, such as CI, local test projects, automation, or explicit user-provided project context, use that project context directly.
 
 ## Command Routing
 
@@ -28,6 +35,7 @@ Use this skill for managing InsForge backend and cloud infrastructure with the I
 | -------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------- |
 | Login, logout, current user                                                                        | `login`, `logout`, `whoami`                     | `references/login.md`                                                              |
 | Create/link/list/current project                                                                   | `create`, `link`, `list`, `current`, `metadata` | `references/create.md`                                                             |
+| CLI flags, exit codes, env vars, connection setup                                                  | global options                                  | `references/cli-basics.md`                                                         |
 | Schema, SQL, RLS, triggers, indexes, imports, exports                                              | `db`                                            | `references/database/*`                                                            |
 | Auth redirects, password policy, SMTP, storage size, realtime/schedule retention, subdomain config | `config`                                        | `references/config.md`                                                             |
 | Storage buckets and objects                                                                        | `storage`                                       | this file                                                                          |
@@ -40,7 +48,8 @@ Use this skill for managing InsForge backend and cloud infrastructure with the I
 | Secrets/env vars                                                                                   | `secrets`, deployment/compute env commands      | this file                                                                          |
 | Scheduled jobs                                                                                     | `schedules`                                     | `references/schedules.md`                                                          |
 | Backend branches                                                                                   | `branch`                                        | `references/branch.md`, `references/branch-merge.md`, `references/branch-reset.md` |
-| Logs and health checks                                                                             | `logs`, `diagnose`                              | this file                                                                          |
+| Logs and health checks                                                                             | `logs`, `diagnose`                              | `references/diagnostics.md`                                                        |
+| Official CLI/API docs lookup                                                                       | `docs`                                          | this file                                                                          |
 | PostHog setup                                                                                      | `posthog setup`                                 | `references/posthog.md`                                                            |
 
 ## Database Workflow
@@ -195,13 +204,22 @@ Branching requires a backend version that supports it. If unavailable, report th
 ## Diagnostics and Logs
 
 - `npx @insforge/cli diagnose` - full health report.
+- `npx @insforge/cli diagnose --ai "<issue description>"` - ask the InsForge debug agent to diagnose a concrete backend issue.
 - `npx @insforge/cli diagnose metrics [--range 1h|6h|24h|7d]` - EC2 metrics.
 - `npx @insforge/cli diagnose advisor [--severity critical|warning|info] [--category security|performance|health]` - advisor issues.
 - `npx @insforge/cli diagnose db [--check <checks>]` - database health checks.
 - `npx @insforge/cli diagnose logs [--source <name>] [--limit <n>]` - aggregate error logs.
 - `npx @insforge/cli logs <source> [--limit <n>]` - source-specific backend logs.
 
-Typical log sources include `function.logs`, `postgres.logs`, `postgrest.logs`, and `insforge.logs`.
+Typical log sources include `function.logs`, `function-deploy.logs`, `postgres.logs`, `postgrest.logs`, and `insforge.logs`. See `references/diagnostics.md` for common debugging scenarios and source selection.
+
+## Documentation
+
+- `npx @insforge/cli docs` - list documentation topics.
+- `npx @insforge/cli docs instructions` - setup guide.
+- `npx @insforge/cli docs <feature> <language>` - feature docs for `db`, `storage`, `functions`, `auth`, `ai`, or `realtime` in `typescript`, `swift`, `kotlin`, or `rest-api`.
+
+For application code with the InsForge SDK, use the `insforge` SDK skill and use `docs` only as official feature reference.
 
 ## PostHog
 
