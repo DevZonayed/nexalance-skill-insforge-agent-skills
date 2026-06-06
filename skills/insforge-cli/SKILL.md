@@ -38,7 +38,7 @@ Use this skill for managing InsForge backend and cloud infrastructure with the I
 | Frontend deployments                                                                               | `deployments`                                   | `references/deployments-deploy.md`                                                 |
 | Backend containers/services                                                                        | `compute`                                       | `references/compute-deploy.md`                                                     |
 | Secrets/env vars                                                                                   | `secrets`, deployment/compute env commands      | this file                                                                          |
-| Scheduled jobs                                                                                     | `schedules`                                     | this file                                                                          |
+| Scheduled jobs                                                                                     | `schedules`                                     | `references/schedules.md`                                                          |
 | Backend branches                                                                                   | `branch`                                        | `references/branch.md`, `references/branch-merge.md`, `references/branch-reset.md` |
 | Logs and health checks                                                                             | `logs`, `diagnose`                              | this file                                                                          |
 | PostHog setup                                                                                      | `posthog setup`                                 | `references/posthog.md`                                                            |
@@ -175,6 +175,7 @@ Backend compute services:
 - Use standard 5-field cron for wall-clock schedules.
 - Use pg_cron interval syntax such as `30 seconds` for sub-minute cadence. Six-field cron with seconds is not supported.
 - Headers can reference InsForge secrets with `${{secrets.KEY_NAME}}`.
+- See `references/schedules.md` for cron formats, secret header references, examples, common mistakes, and the recommended setup workflow.
 
 ## Branching
 
