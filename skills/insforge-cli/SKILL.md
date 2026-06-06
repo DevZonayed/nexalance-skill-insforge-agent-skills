@@ -45,6 +45,7 @@ When the project is already linked, use the current linked project. Run login, p
 - Helper functions called from RLS policies that query RLS-enabled tables should be `SECURITY DEFINER`.
 - Put RLS helper functions in `public` and schema-qualify references such as `public.team_members` and `auth.uid()`.
 - Include `WITH CHECK` for INSERT and UPDATE policies so writes cannot create rows the user should not own.
+- For ACLs, protected owner/tenant/role fields, field-level update masks, or sanitized public views, read `references/database/access-control.md` before writing migrations.
 
 ## Integrity Guidance
 

@@ -94,6 +94,93 @@ GRANT UPDATE (title) ON public.posts TO authenticated;
 If you revoke a privilege, a matching policy is no longer enough by itself; the
 role still needs the operation or column grant to reach the policy.
 
+### Design the Operation Surface First
+
+Before writing policies, decide what each runtime role may do at the SQL
+operation level. RLS answers "which rows"; privileges and guards answer "which
+operations and columns".
+
+For each table, list:
+
+| Operation | Typical access-control question |
+|-----------|---------------------------------|
+| `SELECT` | Who may see full rows, and who only sees a projection? |
+| `INSERT` | Which user identity or tenant must new rows belong to? |
+| `UPDATE` | Which rows may be edited, and which fields must remain immutable? |
+| `DELETE` | Is deletion allowed, or should lifecycle state/soft delete be modeled? |
+
+If an operation or field is narrower than InsForge's broad public-table runtime
+privileges, revoke the broad privilege first, then grant back the exact surface.
+
+### Guard Protected Fields Outside RLS Predicates
+
+RLS policies filter candidate rows and validate the final row with `WITH CHECK`.
+They do not compare old and new column values. PostgreSQL policy expressions do
+not have `OLD` or `NEW`.
+
+For protected fields such as `owner_id`, `tenant_id`, role columns, immutable
+foreign keys, billing fields, or status fields, use column privileges and/or a
+`BEFORE UPDATE` trigger guard. This keeps invariants true even if a future policy
+or grant becomes broader.
+
+```sql
+REVOKE UPDATE ON public.documents FROM anon, authenticated;
+GRANT UPDATE (title, body) ON public.documents TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.prevent_document_owner_change()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.owner_id IS DISTINCT FROM OLD.owner_id THEN
+    RAISE EXCEPTION 'owner_id cannot be changed';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER prevent_document_owner_change
+BEFORE UPDATE ON public.documents
+FOR EACH ROW EXECUTE FUNCTION public.prevent_document_owner_change();
+```
+
+For field-level update masks such as "members may edit content, managers may
+edit status, finance may edit billing code", use a `BEFORE UPDATE` trigger to
+compare `OLD` and `NEW`; use RLS to decide whether the caller can reach the row.
+
+### Model ACLs as Positive Capabilities
+
+For owner/editor/viewer/member sharing systems, avoid one broad `FOR ALL`
+policy. Write separate policies for each operation and express the positive
+capability needed for that operation.
+
+- `SELECT`: owner or active read/edit share.
+- `UPDATE`: owner or active edit share, with protected owner/tenant fields
+  guarded separately.
+- `DELETE`: usually owner/admin only.
+- Share mutation: usually owner/admin only; viewers and editors should not
+  reshare, revoke, or escalate themselves unless that is explicitly intended.
+
+Cross-table ACL lookups commonly touch RLS-enabled tables. Put those lookups in
+`SECURITY DEFINER` helpers and schema-qualify referenced objects.
+
+### Separate Private Base Tables from Public Projections
+
+When a table contains private JSON, billing fields, internal notes, or other
+sensitive columns, keep full-row base-table access narrow. Expose public data
+through a view or function that projects only safe fields.
+
+Do not make the base table readable by everyone just to make a public view work.
+That exposes the full row through direct table reads. If callers need a public
+projection, design the projection explicitly and grant access to the projection,
+not the private base table.
+
+`WITH (security_invoker = true)` makes a PostgreSQL 15+ view respect the caller's
+RLS on the base tables. Use it when the base-table RLS already allows the rows
+the view should expose. If the public projection intentionally exposes a subset
+of fields from rows whose full base rows are private, use a carefully projected
+view/function and keep direct base-table privileges and policies narrow.
+
 ---
 
 ## Critical Vulnerabilities
@@ -142,11 +229,11 @@ RETURNS BOOLEAN AS $$
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
 ```
 
-**Rule: Any helper function called from an RLS policy MUST be `SECURITY DEFINER`** if it queries tables that also have RLS enabled. Keep helpers in `public` and use explicit schema-qualified references.
+**Rule: Any helper function called from an RLS policy should be `SECURITY DEFINER`** when it queries RLS-enabled tables. This includes same-table lookups, parent/ancestor lookups, membership tables, ACL/share tables, and helper chains that would otherwise re-enter RLS. Keep helpers in `public` and use explicit schema-qualified references.
 
 **Checklist:**
 - [ ] Map all RLS policy → function → table dependencies
-- [ ] Every helper function that queries RLS-enabled tables is `SECURITY DEFINER`
+- [ ] Every policy helper that queries RLS-enabled tables, including same-table lookups, is `SECURITY DEFINER`
 - [ ] Helper functions and policies schema-qualify app tables/functions with `public.` and built-ins with their managed schema, such as `auth.uid()`
 - [ ] No circular chains: table A RLS → table B RLS → table A RLS
 - [ ] If recursion or bad plans are suspected, use targeted `EXPLAIN`
@@ -329,13 +416,14 @@ Before completing an RLS implementation:
 - [ ] All tables with user data have `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`
 - [ ] Matching SQL privileges are granted to `anon`/`authenticated` (`GRANT USAGE ON SCHEMA ...`, `GRANT SELECT/INSERT/UPDATE/DELETE ON ...`)
 - [ ] All policies have both `USING` and `WITH CHECK` where applicable
+- [ ] Protected owner, tenant, role, and identity fields are guarded with column privileges or triggers, not only RLS predicates
 - [ ] No circular RLS dependencies between tables (infinite recursion risk)
-- [ ] All helper functions called from policies are `SECURITY DEFINER`
+- [ ] All policy helpers that query RLS-enabled tables are `SECURITY DEFINER`
 - [ ] Helper functions and policies use explicit `public.` and managed-schema references instead of relying on `search_path`
 - [ ] Broad default table privileges are revoked before narrower operation or column grants
 - [ ] Policy columns (`user_id`, `tenant_id`, etc.) are indexed
 - [ ] `(SELECT auth.uid())` used in subquery form for performance
-- [ ] Views on RLS tables use `security_invoker = true` (PG15+)
+- [ ] Public projections do not expose private base-table rows; view/function grants are separated from full table access
 - [ ] No overly permissive `USING (true)` on sensitive tables
 - [ ] Runtime behavior is not inferred from `project_admin`-only queries
 
