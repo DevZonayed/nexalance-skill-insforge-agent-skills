@@ -137,12 +137,14 @@ skills/
 │       ├── auth.md
 │       ├── login.md
 │       ├── create.md
-│       ├── db-query.md
-│       ├── db-rls.md
-│       ├── db-vector.md
-│       ├── db-export.md
-│       ├── db-import.md
-│       ├── db-integrity.md
+│       ├── database/
+│       │   ├── migrations.md
+│       │   ├── query.md
+│       │   ├── rls.md
+│       │   ├── integrity.md
+│       │   ├── vector.md
+│       │   ├── export.md
+│       │   └── import.md
 │       ├── functions-deploy.md
 │       ├── payments.md
 │       └── deployments-deploy.md
@@ -165,7 +167,7 @@ skills/
 
 - **`sdk-integration.md`**: How to use app-facing SDKs/APIs in application code.
 - **AI capability guides**: `ai/overview.md` links to smaller OpenRouter-focused guides for chat completions, image generation, video generation, audio, embeddings/RAG, and model discovery.
-- **Specialized guides**: Focused references such as `db-rls.md`, `db-integrity.md`, `storage/postgres-rls.md`, `s3-gateway.md`, `db-vector.md`, or provider-specific integration guides.
+- **Specialized guides**: Focused references such as `references/database/rls.md`, `references/database/integrity.md`, `storage/postgres-rls.md`, `s3-gateway.md`, `references/database/vector.md`, or provider-specific integration guides.
 
 ## Contributing
 

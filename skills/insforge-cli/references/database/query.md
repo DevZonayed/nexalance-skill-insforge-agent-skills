@@ -1,6 +1,6 @@
 # npx @insforge/cli db query
 
-Execute a raw SQL query against the project database for inspection and row-level data changes.
+Execute a raw SQL query against the project database for targeted inspection and row-level data changes.
 
 ## Syntax
 
@@ -61,6 +61,9 @@ Use `db query` for:
 - backfilling or correcting rows in `public`
 - one-off row updates in `public`
 
+Avoid using `db query` as an incremental DDL workflow. For schema, RLS, grants,
+triggers, functions, indexes, and extensions, create one migration and apply it.
+
 ## InsForge SQL References
 
 When writing SQL for InsForge, use these built-in references:
@@ -83,5 +86,5 @@ npx @insforge/cli db query "UPDATE posts SET status = 'draft' WHERE status IS NU
 
 ## Notes
 
-- For schema changes and RLS policy changes, use the migrations workflow in [db-migrations.md](db-migrations.md).
-- For advanced RLS patterns (infinite recursion prevention, SECURITY DEFINER, performance), see [db-rls.md](db-rls.md).
+- For schema changes and RLS policy changes, use the migrations workflow in [migrations.md](migrations.md).
+- For advanced RLS patterns (infinite recursion prevention, SECURITY DEFINER, performance), see [rls.md](rls.md).

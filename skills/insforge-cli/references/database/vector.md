@@ -55,12 +55,12 @@ STABLE
 SECURITY INVOKER
 AS $$
   SELECT
-    documents.id,
-    documents.content,
-    1 - (documents.embedding <=> query_embedding) AS similarity
+    public.documents.id,
+    public.documents.content,
+    1 - (public.documents.embedding <=> query_embedding) AS similarity
   FROM public.documents
-  WHERE 1 - (documents.embedding <=> query_embedding) >= match_threshold
-  ORDER BY documents.embedding <=> query_embedding
+  WHERE 1 - (public.documents.embedding <=> query_embedding) >= match_threshold
+  ORDER BY public.documents.embedding <=> query_embedding
   LIMIT match_count;
 $$;
 

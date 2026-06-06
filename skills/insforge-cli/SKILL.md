@@ -27,7 +27,9 @@ When the project is already linked, use the current linked project. Run login, p
 
 - Prefer `npx @insforge/cli db migrations new <name>` plus a migration SQL file for schema, grants, indexes, triggers, functions, and RLS policy changes.
 - Apply migrations with `npx @insforge/cli db migrations up --all`.
-- Use `npx @insforge/cli db query <sql>` for inspection and small corrective SQL only when a migration is not appropriate.
+- For new schema work, design the SQL first and apply it in one migration when practical. Avoid running one `db query` per DDL statement.
+- Do not run `--version`, `--help`, migration history commands, or broad schema inspection as a routine first step. Use targeted inspection only when existing state is unknown or a command fails.
+- Use `npx @insforge/cli db query <sql>` for targeted inspection and small corrective row/data SQL only when a migration is not appropriate.
 - For generic application database work, create and modify app-owned objects in the `public` schema.
 - Create, alter, drop, grant, revoke, index, trigger, function, view, and policy changes on `public` application objects.
 - Do not create custom schemas or write to InsForge-managed/system schemas such as `auth`, `storage`, `realtime`, `payments`, `graphql`, `extensions`, `pg_catalog`, `information_schema`, or `system`, unless you are working on that specific feature module and its docs explicitly allow the operation.
@@ -38,6 +40,7 @@ When the project is already linked, use the current linked project. Run login, p
 
 - Use `auth.uid()` or an equivalent authenticated identity expression for user ownership checks.
 - Add both SQL privileges and RLS policies. Policies do not replace `GRANT`.
+- Runtime roles have broad default DML privileges on `public` tables so RLS can decide row access. If a table needs narrower operation or column access, explicitly `REVOKE` the broad privilege before granting the exact allowed operations or columns.
 - Prefer helper functions for cross-table RLS checks when direct policy joins can recurse through other RLS policies.
 - Helper functions called from RLS policies that query RLS-enabled tables should be `SECURITY DEFINER`.
 - Put RLS helper functions in `public` and schema-qualify references such as `public.team_members` and `auth.uid()`.
@@ -45,13 +48,13 @@ When the project is already linked, use the current linked project. Run login, p
 
 ## Integrity Guidance
 
-For counters, balances, latest pointers, append-only history, state transitions, lifecycle guards, protected deletes, or trigger-maintained columns, read `references/db-integrity.md` before writing migrations.
+For counters, balances, latest pointers, append-only history, state transitions, lifecycle guards, protected deletes, or trigger-maintained columns, read `references/database/integrity.md` before writing migrations.
 
 ## References
 
-- `references/db-migrations.md` - migration file creation and apply workflow.
-- `references/db-query.md` - raw SQL execution and inspection.
-- `references/db-integrity.md` - constraints, triggers, derived state, lifecycle guards, append-only history, and server-maintained fields.
-- `references/db-rls.md` - InsForge/Postgres RLS patterns, recursion avoidance, and policy guidance.
-- `references/db-vector.md` - pgvector extension, vector schema, distance operators, indexes, and vector search SQL/RPC patterns.
-- `references/db-export.md` / `references/db-import.md` - schema or data import/export tasks.
+- `references/database/migrations.md` - migration file creation and apply workflow.
+- `references/database/query.md` - raw SQL execution and targeted inspection.
+- `references/database/integrity.md` - constraints, triggers, derived state, lifecycle guards, append-only history, and server-maintained fields.
+- `references/database/rls.md` - InsForge/Postgres RLS patterns, recursion avoidance, privileges, and policy guidance.
+- `references/database/vector.md` - pgvector extension, vector schema, distance operators, indexes, and vector search SQL/RPC patterns.
+- `references/database/export.md` / `references/database/import.md` - schema or data import/export tasks.

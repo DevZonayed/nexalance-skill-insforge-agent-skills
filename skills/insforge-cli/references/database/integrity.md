@@ -129,6 +129,11 @@ the trusted trigger function can maintain it.
 
 ## Legal Insert Payloads
 
+InsForge gives runtime roles broad default DML privileges on `public` tables so
+RLS can decide row access. For integrity rules that narrow writes, explicitly
+`REVOKE` broad privileges before adding column-level or operation-specific
+`GRANT`s.
+
 Column-level grants can accidentally block legitimate API payloads. Before using
 column-level `INSERT` grants, list every column a normal SDK/REST caller may send.
 

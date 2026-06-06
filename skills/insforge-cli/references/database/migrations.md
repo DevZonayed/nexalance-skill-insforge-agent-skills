@@ -62,12 +62,6 @@ migrations/
 ## Examples
 
 ```bash
-# View remote migration history
-npx @insforge/cli db migrations list
-
-# Fetch remote migration files into migrations/
-npx @insforge/cli db migrations fetch
-
 # Create the next migration file
 npx @insforge/cli db migrations new create-posts
 
@@ -82,6 +76,10 @@ npx @insforge/cli db migrations up --to 20260418110000
 
 # Apply all pending migrations
 npx @insforge/cli db migrations up --all
+
+# View or fetch remote history only when you need it
+npx @insforge/cli db migrations list
+npx @insforge/cli db migrations fetch
 
 # JSON output
 npx @insforge/cli db migrations list --json
@@ -138,13 +136,16 @@ npx @insforge/cli db migrations list --json
 
 ## Best Practices
 
-1. **Use migrations for schema changes**
+1. **Use one migration for schema changes**
    - Migration SQL runs as `project_admin`.
    - `project_admin` can manage and own objects in `public`, but access to InsForge-managed schemas is restricted.
    - For generic application database work, create and evolve app-owned objects through migration files in `public`: tables, views, indexes, policies, triggers, helper functions, and grants.
    - Do not create custom schemas or write to InsForge-managed/system schemas such as `auth`, `storage`, `realtime`, `payments`, `graphql`, `extensions`, `pg_catalog`, `information_schema`, or `system`, unless you are working on that specific feature module and its docs explicitly allow the operation.
    - It is allowed to reference built-in objects such as `auth.users(id)` and `auth.uid()` from public tables or public RLS policies; do not modify those built-in objects.
-   - Reserve `db query` for row-level data fixes, backfills, and inspection.
+   - Prefer one complete migration over many incremental `db query` DDL statements.
+   - Reserve `db query` for row-level data fixes, backfills, and targeted inspection.
+   - Do not manually reload the PostgREST schema cache after migrations; apply already handles it.
+   - Do not manually change `search_path`; migrations already run against `public`.
 
 2. **Normalize large JSONB payloads into columns or child tables**
    - Avoid designing tables where app code reads/writes large JSONB blobs through PostgREST; large JSONB rows can drive excessive PostgREST memory use.
@@ -152,8 +153,9 @@ npx @insforge/cli db migrations list --json
    - Use child tables for repeated nested objects, with foreign keys and indexes on ownership/lookup columns.
    - Keep JSONB for small, rarely queried metadata/config where whole-object reads and writes are acceptable.
 
-3. **Run `fetch` on a new machine or branch**
-   - Sync remote history into `migrations/` before adding local pending migrations.
+3. **Run history commands only when needed**
+   - Use `list` or `fetch` when you are on a new machine, reconciling a branch, or unsure about remote history.
+   - Skip `list`, `fetch`, `--help`, and `--version` when the task already has a clear migration target.
 
 4. **Use `new` instead of naming files by hand**
    - Let the CLI assign the next timestamp version safely.
@@ -188,11 +190,9 @@ npx @insforge/cli db migrations list --json
 ## Recommended Workflow
 
 ```text
-1. Sync remote history locally when needed → npx @insforge/cli db migrations fetch
-2. Design large JSONB as columns/child tables when needed → see rule 2 above
-3. Create the next migration file   → npx @insforge/cli db migrations new <migration-name>
-4. Edit the SQL file                → migrations/<version>_<migration-name>.sql
-5. Apply one migration explicitly   → npx @insforge/cli db migrations up <filename>
-6. Or batch apply safely            → npx @insforge/cli db migrations up --to <target> / --all
-7. If it fails, fix/delete the local blocker → if an earlier file is broken or stale, fix it or remove it before retrying later ones
+1. Design the schema/RLS/grant change before running commands.
+2. Create the next migration file   → npx @insforge/cli db migrations new <migration-name>
+3. Edit the SQL file                → migrations/<version>_<migration-name>.sql
+4. Apply the migration              → npx @insforge/cli db migrations up <filename> or --all
+5. If apply fails, read the error, fix the migration, and retry. Do not switch to piecemeal DDL through `db query`.
 ```

@@ -79,7 +79,20 @@ CREATE TRIGGER posts_updated_at
   EXECUTE FUNCTION system.update_updated_at();
 ```
 
-Policies decide which rows a role may access after PostgreSQL has allowed the SQL operation. They do not grant `SELECT`, `INSERT`, `UPDATE`, or `DELETE` privileges. If a table has policies but no matching `GRANT`, SDK/REST calls still fail before RLS can allow the row.
+Policies decide which rows a role may access after PostgreSQL has allowed the SQL operation. They do not grant `SELECT`, `INSERT`, `UPDATE`, or `DELETE` privileges.
+
+InsForge grants broad DML privileges on `public` tables to `anon` and
+`authenticated` by default so RLS policies can decide row-level access. When the
+goal is narrower than the default operation or column surface, explicitly revoke
+the broad privilege before granting the exact access you want:
+
+```sql
+REVOKE UPDATE ON public.posts FROM anon, authenticated;
+GRANT UPDATE (title) ON public.posts TO authenticated;
+```
+
+If you revoke a privilege, a matching policy is no longer enough by itself; the
+role still needs the operation or column grant to reach the policy.
 
 ---
 
@@ -136,7 +149,7 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER;
 - [ ] Every helper function that queries RLS-enabled tables is `SECURITY DEFINER`
 - [ ] Helper functions and policies schema-qualify app tables/functions with `public.` and built-ins with their managed schema, such as `auth.uid()`
 - [ ] No circular chains: table A RLS → table B RLS → table A RLS
-- [ ] Test with `EXPLAIN (ANALYZE)` to verify queries terminate
+- [ ] If recursion or bad plans are suspected, use targeted `EXPLAIN` instead of broad schema inspection
 
 ### 2. Missing USING or WITH CHECK (HIGH)
 
@@ -319,14 +332,14 @@ Before completing an RLS implementation:
 - [ ] No circular RLS dependencies between tables (infinite recursion risk)
 - [ ] All helper functions called from policies are `SECURITY DEFINER`
 - [ ] Helper functions and policies use explicit `public.` and managed-schema references instead of relying on `search_path`
+- [ ] Broad default table privileges are revoked before narrower operation or column grants
 - [ ] Policy columns (`user_id`, `tenant_id`, etc.) are indexed
 - [ ] `(SELECT auth.uid())` used in subquery form for performance
 - [ ] Views on RLS tables use `security_invoker = true` (PG15+)
 - [ ] No overly permissive `USING (true)` on sensitive tables
-- [ ] Tested as `authenticated` role, not as superuser/admin
+- [ ] Runtime behavior is not inferred from `project_admin`-only queries
 
 ## References
 
 - [PostgreSQL RLS Documentation](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
 - [SECURITY DEFINER Functions](https://www.postgresql.org/docs/current/sql-createfunction.html)
-- [Postgres-rls Skill](https://playbooks.com/skills/troykelly/claude-skills/postgres-rls)
