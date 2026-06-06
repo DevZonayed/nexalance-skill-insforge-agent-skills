@@ -138,10 +138,7 @@ npx @insforge/cli db migrations list --json
 
 ## Best Practices
 
-1. **Start with `list` on unfamiliar projects**
-   - Check the current remote migration history before creating or applying anything.
-
-2. **Use migrations for schema changes**
+1. **Use migrations for schema changes**
    - Migration SQL runs as `project_admin`.
    - `project_admin` can manage and own objects in `public`, but access to InsForge-managed schemas is restricted.
    - For generic application database work, create and evolve app-owned objects through migration files in `public`: tables, views, indexes, policies, triggers, helper functions, and grants.
@@ -149,36 +146,28 @@ npx @insforge/cli db migrations list --json
    - It is allowed to reference built-in objects such as `auth.users(id)` and `auth.uid()` from public tables or public RLS policies; do not modify those built-in objects.
    - Reserve `db query` for row-level data fixes, backfills, and inspection.
 
-3. **Check the live schema first**
-   - Treat the current database schema as the source of truth.
-   - Before writing a migration, inspect the newest state with `db tables / indexes / policies / triggers / functions` and `db migrations list`.
-
-4. **Normalize large JSONB payloads into columns or child tables**
+2. **Normalize large JSONB payloads into columns or child tables**
    - Avoid designing tables where app code reads/writes large JSONB blobs through PostgREST; large JSONB rows can drive excessive PostgREST memory use.
    - Use typed columns for fields used in filters, sorting, list views, RLS policies, or partial updates.
    - Use child tables for repeated nested objects, with foreign keys and indexes on ownership/lookup columns.
    - Keep JSONB for small, rarely queried metadata/config where whole-object reads and writes are acceptable.
 
-5. **Run `fetch` on a new machine or branch**
+3. **Run `fetch` on a new machine or branch**
    - Sync remote history into `migrations/` before adding local pending migrations.
 
-6. **Use `new` instead of naming files by hand**
+4. **Use `new` instead of naming files by hand**
    - Let the CLI assign the next timestamp version safely.
 
-7. **Use explicit single-target apply for focused changes**
+5. **Use explicit single-target apply for focused changes**
    - `up <filename>` or `up <version>` is ideal when you want one specific migration.
 
-8. **Use batch apply for CI or bootstrap**
+6. **Use batch apply for CI or bootstrap**
    - `up --to <target>` or `up --all` is safer than hand-looping files in shell scripts because the CLI keeps ordering and fail-fast behavior consistent.
 
-9. **Re-check schema after failures**
-   - If a migration fails, inspect the live database state again before editing the migration file.
-   - Adjust the SQL to match the newest schema instead of assuming the previous file is still correct.
-
-10. **Treat fetched files as history**
+7. **Treat fetched files as history**
    - Once a migration is applied remotely, avoid editing its local file.
 
-11. **Do not include transaction statements in migration files**
+8. **Do not include transaction statements in migration files**
    - The backend executes each migration inside its own transaction.
    - Do not add `BEGIN`, `COMMIT`, or `ROLLBACK` to the migration SQL.
 
@@ -193,22 +182,17 @@ npx @insforge/cli db migrations list --json
 | Applying a file out of order | Apply the next pending local migration, or fix/delete the earlier local file that is blocking it |
 | Keeping a local file older than the current remote head | Rename it with a newer timestamp or delete it locally if it is stale |
 | Adding `BEGIN` / `COMMIT` / `ROLLBACK` to migration SQL | Remove them; the backend already wraps the migration in its own transaction |
-| Editing a failed migration without checking live state first | Re-inspect the current schema and adjust the SQL to match reality |
 | Editing already-fetched remote history casually | Treat fetched files as applied history, not drafts |
 | Assuming `fetch` overwrites local files | `fetch` skips existing file paths instead of replacing them |
 
 ## Recommended Workflow
 
 ```text
-1. Inspect live schema first        → npx @insforge/cli db tables / indexes / policies / triggers / functions
-2. Inspect remote migration state   → npx @insforge/cli db migrations list
-3. Sync remote history locally      → npx @insforge/cli db migrations fetch
-4. Design large JSONB as columns/child tables when needed → see rule 4 above
-5. Create the next migration file   → npx @insforge/cli db migrations new <migration-name>
-6. Edit the SQL file                → migrations/<version>_<migration-name>.sql
-7. Apply one migration explicitly   → npx @insforge/cli db migrations up <filename>
-8. Or batch apply safely            → npx @insforge/cli db migrations up --to <target> / --all
-9. If it fails, fix/delete the local blocker → if an earlier file is broken or stale, fix it or remove it before retrying later ones
-10. If SQL failed, inspect live state → check current schema again, then adjust the migration SQL
-11. Re-check remote state           → npx @insforge/cli db migrations list
+1. Sync remote history locally when needed → npx @insforge/cli db migrations fetch
+2. Design large JSONB as columns/child tables when needed → see rule 2 above
+3. Create the next migration file   → npx @insforge/cli db migrations new <migration-name>
+4. Edit the SQL file                → migrations/<version>_<migration-name>.sql
+5. Apply one migration explicitly   → npx @insforge/cli db migrations up <filename>
+6. Or batch apply safely            → npx @insforge/cli db migrations up --to <target> / --all
+7. If it fails, fix/delete the local blocker → if an earlier file is broken or stale, fix it or remove it before retrying later ones
 ```
