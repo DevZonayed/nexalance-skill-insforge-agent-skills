@@ -29,7 +29,7 @@ For generic application database work, create and modify app-owned objects in th
 - Create, alter, drop, grant, revoke, index, trigger, function, view, and policy changes on `public` application objects.
 - Do not create custom schemas or write to InsForge-managed/system schemas such as `auth`, `storage`, `realtime`, `payments`, `graphql`, `extensions`, `pg_catalog`, `information_schema`, or `system`, unless you are working on that specific feature module and its docs explicitly allow the operation.
 - It is allowed to reference built-in objects such as `auth.users(id)` and `auth.uid()` from public tables or public RLS policies; do not modify those built-in objects.
-- Put RLS helper functions in `public` and schema-qualify references such as `public.team_members` and `auth.uid()`.
+- Put RLS helper functions in `public`, schema-qualify references such as `public.team_members` and `auth.uid()`, and pin `SECURITY DEFINER` helpers to `SET search_path = pg_catalog, public, pg_temp`.
 - InsForge migrations already run against `public`; schema-qualified references keep helper functions explicit.
 
 Managed table RLS belongs to the corresponding storage, realtime, or payments feature context. Use those feature docs when the task is specifically about those modules.
@@ -56,16 +56,16 @@ CREATE POLICY "anyone can read" ON posts
 
 CREATE POLICY "owners can insert" ON posts
   FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (SELECT auth.uid()));
 
 CREATE POLICY "owners can update" ON posts
   FOR UPDATE TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (user_id = (SELECT auth.uid()));
 
 CREATE POLICY "owners can delete" ON posts
   FOR DELETE TO authenticated
-  USING (user_id = auth.uid());
+  USING (user_id = (SELECT auth.uid()));
 
 -- 4. Grant SQL privileges to the roles that should pass through the policies
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
@@ -162,7 +162,8 @@ capability needed for that operation.
   reshare, revoke, or escalate themselves unless that is explicitly intended.
 
 Cross-table ACL lookups commonly touch RLS-enabled tables. Put those lookups in
-`SECURITY DEFINER` helpers and schema-qualify referenced objects.
+`SECURITY DEFINER` helpers, pin their `search_path`, and schema-qualify
+referenced objects.
 
 ### Separate Private Base Tables from Public Projections
 
@@ -226,14 +227,16 @@ RETURNS BOOLEAN AS $$
     SELECT 1 FROM public.company_memberships
     WHERE company_id = company_uuid AND user_id = auth.uid()
   );
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
+$$ LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp;
 ```
 
-**Rule: Any helper function called from an RLS policy should be `SECURITY DEFINER`** when it queries RLS-enabled tables. This includes same-table lookups, parent/ancestor lookups, membership tables, ACL/share tables, and helper chains that would otherwise re-enter RLS. Keep helpers in `public` and use explicit schema-qualified references.
+**Rule: Any helper function called from an RLS policy should be `SECURITY DEFINER`** when it queries RLS-enabled tables. This includes same-table lookups, parent/ancestor lookups, membership tables, ACL/share tables, and helper chains that would otherwise re-enter RLS. Keep helpers in `public`, use explicit schema-qualified references, and pin the function `search_path` to `pg_catalog, public, pg_temp`.
 
 **Checklist:**
 - [ ] Map all RLS policy → function → table dependencies
 - [ ] Every policy helper that queries RLS-enabled tables, including same-table lookups, is `SECURITY DEFINER`
+- [ ] Every `SECURITY DEFINER` helper sets `search_path` to `pg_catalog, public, pg_temp`
 - [ ] Helper functions and policies schema-qualify app tables/functions with `public.` and built-ins with their managed schema, such as `auth.uid()`
 - [ ] No circular chains: table A RLS → table B RLS → table A RLS
 - [ ] If recursion or bad plans are suspected, use targeted `EXPLAIN`
@@ -250,8 +253,8 @@ CREATE POLICY "owner access" ON posts
 -- COMPLETE: Both read and write protected
 CREATE POLICY "owner access" ON posts
   FOR ALL
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (user_id = (SELECT auth.uid()));
 ```
 
 **Checklist:**
@@ -268,7 +271,7 @@ CREATE POLICY "allow all reads" ON orders
   FOR SELECT USING (true);
 
 CREATE POLICY "tenant isolation" ON orders
-  FOR SELECT USING (tenant_id = auth.uid());
+  FOR SELECT USING (tenant_id = (SELECT auth.uid()));
 -- ^ This is useless — the first policy already allows everything
 ```
 
@@ -324,7 +327,8 @@ Avoid RLS-on-RLS chains (see Infinite Recursive RLS above). Wrap cross-table loo
 CREATE OR REPLACE FUNCTION user_accessible_document_ids(uid UUID)
 RETURNS SETOF UUID AS $$
   SELECT document_id FROM public.permissions WHERE user_id = uid;
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
+$$ LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp;
 
 CREATE POLICY "access check" ON documents
   USING (id IN (SELECT * FROM user_accessible_document_ids((SELECT auth.uid()))));
@@ -360,16 +364,16 @@ CREATE POLICY "public read" ON posts
 
 CREATE POLICY "owner write" ON posts
   FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (SELECT auth.uid()));
 
 CREATE POLICY "owner update" ON posts
   FOR UPDATE TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (user_id = (SELECT auth.uid()));
 
 CREATE POLICY "owner delete" ON posts
   FOR DELETE TO authenticated
-  USING (user_id = auth.uid());
+  USING (user_id = (SELECT auth.uid()));
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON posts TO anon, authenticated;
@@ -385,7 +389,8 @@ RETURNS BOOLEAN AS $$
     SELECT 1 FROM public.org_members
     WHERE org_id = org_uuid AND user_id = auth.uid()
   );
-$$ LANGUAGE sql STABLE SECURITY DEFINER;  -- prevents recursive RLS when this queries RLS-enabled tables
+$$ LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp;  -- prevents recursive RLS and pins name resolution
 
 CREATE POLICY "org members access" ON projects
   FOR ALL TO authenticated
@@ -401,7 +406,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON projects TO authenticated;
 ```sql
 CREATE POLICY "authenticated users only" ON profiles
   FOR SELECT TO authenticated
-  USING (auth.uid() IS NOT NULL);
+  USING ((SELECT auth.uid()) IS NOT NULL);
 
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT SELECT ON profiles TO authenticated;
@@ -419,6 +424,7 @@ Before completing an RLS implementation:
 - [ ] Protected owner, tenant, role, and identity fields are guarded with column privileges or triggers, not only RLS predicates
 - [ ] No circular RLS dependencies between tables (infinite recursion risk)
 - [ ] All policy helpers that query RLS-enabled tables are `SECURITY DEFINER`
+- [ ] Helper functions pin `search_path` to `pg_catalog, public, pg_temp`
 - [ ] Helper functions and policies use explicit `public.` and managed-schema references instead of relying on `search_path`
 - [ ] Broad default table privileges are revoked before narrower operation or column grants
 - [ ] Policy columns (`user_id`, `tenant_id`, etc.) are indexed
