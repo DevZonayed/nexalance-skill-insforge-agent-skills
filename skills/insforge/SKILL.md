@@ -5,9 +5,9 @@ description: >-
 license: MIT
 metadata:
   author: insforge
-  version: "1.3.0"
+  version: "1.4.0"
   organization: InsForge
-  date: April 2026
+  date: June 2026
 ---
 
 # InsForge App Integration Skill
@@ -65,20 +65,37 @@ NEXT_PUBLIC_INSFORGE_ANON_KEY=eyJhbGciOiJIUzI1NiIs...
 
 ### 3. Initialize the client
 
-```javascript
-import { createClient } from "@insforge/sdk";
+Next.js:
 
-// Next.js / CRA: use process.env
+```javascript
+import { createClient } from '@insforge/sdk'
+
 const insforge = createClient({
   baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL,
-  anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY,
-});
+  anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY
+})
+```
 
-// Vite / Astro: use import.meta.env
+Vite:
+
+```javascript
+import { createClient } from '@insforge/sdk'
+
 const insforge = createClient({
   baseUrl: import.meta.env.VITE_INSFORGE_URL,
-  anonKey: import.meta.env.VITE_INSFORGE_ANON_KEY,
-});
+  anonKey: import.meta.env.VITE_INSFORGE_ANON_KEY
+})
+```
+
+Astro:
+
+```javascript
+import { createClient } from '@insforge/sdk'
+
+const insforge = createClient({
+  baseUrl: import.meta.env.PUBLIC_INSFORGE_URL,
+  anonKey: import.meta.env.PUBLIC_INSFORGE_ANON_KEY
+})
 ```
 
 For trusted server-only code that needs project-admin access:
