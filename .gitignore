@@ -11,7 +11,6 @@ Thumbs.db
 
 # Editor directories
 .idea/
-.vscode/
 *.swp
 *.swo
 
@@ -33,3 +32,7 @@ temp/
 
 # Worktrees
 .worktrees/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
