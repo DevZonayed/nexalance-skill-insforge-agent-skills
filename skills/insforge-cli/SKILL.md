@@ -172,8 +172,9 @@ Create channel patterns, app-table publish triggers, and channel/message RLS thr
 Use `payments` for Stripe/Razorpay backend setup and catalog sync. See `references/payments/overview.md`.
 
 - Payments are provider-specific: use `payments stripe ...` or `payments razorpay ...` explicitly.
-- Configure provider keys with `payments <provider> config set`.
-- Run `payments <provider> sync` before relying on mirrored catalog data.
+- Configure provider keys with `payments <provider> config set`; setting keys automatically syncs provider state when the key or account changes.
+- Check key/account/sync/webhook health with `payments <provider> status`.
+- Run `payments <provider> sync` to manually refresh or retry mirrored provider data.
 - Stripe uses Products/Prices and supports managed webhook registration; Razorpay uses Items/Plans/Orders and requires manual webhook setup in the Razorpay Dashboard.
 - Prefer test mode while building. Use live mode only after explicit user approval.
 - If the backend reports payments unavailable, ask the user/admin to enable or upgrade payments. Do not work around it by storing provider keys as generic secrets or embedding payment secret keys in app code.

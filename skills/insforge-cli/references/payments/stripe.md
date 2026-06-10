@@ -10,12 +10,16 @@ Always start with status:
 npx @insforge/cli payments stripe status
 ```
 
-If Stripe is unconfigured, add the environment key, then sync:
+If Stripe is unconfigured, add the environment key. `config set` validates the key and automatically syncs provider state when the key or account changes. Use `status` again after setup to verify key/account/sync/webhook health:
 
 ```bash
-npx @insforge/cli payments stripe config list
 npx @insforge/cli payments stripe config set --environment test sk_test_xxx
-npx @insforge/cli payments stripe config remove --environment test -y
+npx @insforge/cli payments stripe status
+```
+
+Use `sync` later to manually refresh mirrored provider data or retry a failed sync:
+
+```bash
 npx @insforge/cli payments stripe sync --environment test
 ```
 
