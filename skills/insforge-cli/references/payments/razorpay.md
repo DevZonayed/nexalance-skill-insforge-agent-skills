@@ -10,12 +10,16 @@ Always start with status:
 npx @insforge/cli payments razorpay status
 ```
 
-If Razorpay is unconfigured, add Key ID and Key Secret, then sync:
+If Razorpay is unconfigured, add Key ID and Key Secret. `config set` validates the keys and automatically syncs provider state when the key or account changes. Use `status` again after setup to verify key/account/sync/webhook health:
 
 ```bash
-npx @insforge/cli payments razorpay config list
 npx @insforge/cli payments razorpay config set --environment test --key-id rzp_test_xxx --key-secret xxx
-npx @insforge/cli payments razorpay config remove --environment test -y
+npx @insforge/cli payments razorpay status
+```
+
+Use `sync` later to manually refresh mirrored provider data or retry a failed sync:
+
+```bash
 npx @insforge/cli payments razorpay sync --environment test
 ```
 
